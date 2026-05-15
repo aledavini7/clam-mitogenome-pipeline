@@ -1,4 +1,4 @@
-name: Build CLAM core container
+name: Build CLAM containers
 
 on:
   workflow_dispatch:
@@ -8,10 +8,11 @@ on:
       - master
     paths:
       - containers/clam-core/**
+      - containers/mutect2/**
       - .github/workflows/build-clam-core.yml
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/clam-core
+  REGISTRY_ROOT: ghcr.io/${{ github.repository_owner }}
 
 permissions:
   contents: read
@@ -19,8 +20,16 @@ permissions:
 
 jobs:
   build:
-    name: Build linux/amd64 image
+    name: Build ${{ matrix.name }} linux/amd64 image
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: clam-core
+            context: containers/clam-core
+          - name: clam-mutect2
+            context: containers/mutect2
 
     steps:
       - name: Check out repository
@@ -36,15 +45,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push CLAM core
+      - name: Build and push CLAM container
         uses: docker/build-push-action@v6
         with:
-          context: containers/clam-core
-          file: containers/clam-core/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/Dockerfile
           platforms: linux/amd64
           build-args: |
             CLAM_TARGETPLATFORM=linux/amd64
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:0.1.0
-            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY_ROOT }}/${{ matrix.name }}:0.1.0
+            ${{ env.REGISTRY_ROOT }}/${{ matrix.name }}:latest
