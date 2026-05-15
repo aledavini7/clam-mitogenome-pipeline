@@ -1,0 +1,50 @@
+name: Build CLAM core container
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - containers/clam-core/**
+      - .github/workflows/build-clam-core.yml
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/clam-core
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build linux/amd64 image
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push CLAM core
+        uses: docker/build-push-action@v6
+        with:
+          context: containers/clam-core
+          file: containers/clam-core/Dockerfile
+          platforms: linux/amd64
+          build-args: |
+            CLAM_TARGETPLATFORM=linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:0.1.0
+            ${{ env.IMAGE_NAME }}:latest

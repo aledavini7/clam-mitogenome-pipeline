@@ -1,0 +1,9 @@
+name: base
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - gmap
+  - htslib
+  - openjdk=17
+  - samtools

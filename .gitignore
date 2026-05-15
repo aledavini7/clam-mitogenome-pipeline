@@ -1,0 +1,9 @@
+.nextflow/**
+results/**
+final_results/**
+vm_results/**
+work/**
+.nextflow.log*
+bozza.nf
+old_files/**
+vm_results/**
