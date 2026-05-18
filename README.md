@@ -118,6 +118,44 @@ Container build definitions live in:
 The GitHub Actions workflow in `.github/workflows/build-clam-core.yml` builds
 and publishes both container images to GHCR.
 
+## Seqera Launchpad
+
+The repository includes `nextflow_schema.json` in the root directory. Seqera
+uses this file to build the Launchpad parameter form for `input`, `input_type`,
+`genome`, and `outdir`.
+
+Suggested Launchpad settings for the first test runs:
+
+| Field | Value |
+| --- | --- |
+| Pipeline | `https://github.com/aledavini7/clam-mitogenome-pipeline` |
+| Revision | `main` or a pinned commit SHA |
+| Main script | inferred from `manifest.mainScript = 'clam.nf'` |
+| Config profile | leave empty for the current IEO SLURM/Singularity defaults |
+| Work directory | an accessible cluster work path, for example `/hpcscratch/ieo/ieo5898/clam-mitogenome-pipeline-work` |
+
+Minimal run parameters:
+
+```json
+{
+  "input": "/path/to/data/*_{R1,R2}.fastq.gz",
+  "input_type": "fastq",
+  "genome": "GRCh38",
+  "outdir": "results"
+}
+```
+
+For BAM input:
+
+```json
+{
+  "input": "/path/to/data/*.bam",
+  "input_type": "bam",
+  "genome": "GRCh38",
+  "outdir": "results"
+}
+```
+
 ## Main Outputs
 
 For each sample, CLAM writes results under:
@@ -146,10 +184,11 @@ Implemented in the modernized core:
 - containerized CLAM core runtime
 - containerized Mutect2 runtime
 - SLURM/Singularity-oriented configuration
+- `nextflow_schema.json` for Seqera Launchpad
 
 Still planned:
 
-- add `nextflow_schema.json` for Seqera Launchpad
+- run the first Seqera Launchpad test
 - validate and finalize GRCh37/hg19 NUMT resources
 - convert remaining annotation logic into a clean downstream workflow
 - decide how WES-specific logic should be exposed

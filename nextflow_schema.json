@@ -1,0 +1,145 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com/aledavini7/clam-mitogenome-pipeline/main/nextflow_schema.json",
+    "title": "CLAM mitochondrial genome pipeline parameters",
+    "description": "Parameters for launching the CLAM mitochondrial genome pipeline.",
+    "type": "object",
+    "$defs": {
+        "input_output_options": {
+            "title": "Input/output options",
+            "type": "object",
+            "fa_icon": "fas fa-folder-open",
+            "required": [
+                "input",
+                "input_type"
+            ],
+            "properties": {
+                "input": {
+                    "type": "string",
+                    "format": "file-path-pattern",
+                    "description": "Input FASTQ pair glob or BAM path/glob.",
+                    "help_text": "For FASTQ input, use a paired-end glob such as `data/*_{R1,R2}.fastq.gz`. For BAM input, use a BAM file or glob such as `data/*.bam`.",
+                    "fa_icon": "fas fa-file-import"
+                },
+                "input_type": {
+                    "type": "string",
+                    "description": "Type of input files supplied to the pipeline.",
+                    "help_text": "`fastq` starts directly from paired FASTQ files. `bam` sorts the input BAM, converts it back to FASTQ, and then remaps it through the CLAM workflow.",
+                    "enum": [
+                        "fastq",
+                        "bam"
+                    ],
+                    "fa_icon": "fas fa-list"
+                },
+                "outdir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "description": "Directory where pipeline results are published.",
+                    "default": "results",
+                    "fa_icon": "fas fa-folder"
+                }
+            }
+        },
+        "reference_options": {
+            "title": "Reference options",
+            "type": "object",
+            "fa_icon": "fas fa-dna",
+            "properties": {
+                "genome": {
+                    "type": "string",
+                    "description": "Reference genome mode to use.",
+                    "help_text": "`GRCh38` and `GRCh37` use rCRS mitochondrial alignment plus nuclear-only remapping for NUMT correction. `rCRS` runs a mitochondrial-only mode and skips NUMT correction.",
+                    "default": "GRCh38",
+                    "enum": [
+                        "GRCh38",
+                        "GRCh37",
+                        "rCRS"
+                    ],
+                    "fa_icon": "fas fa-dna"
+                }
+            }
+        },
+        "container_options": {
+            "title": "Container options",
+            "type": "object",
+            "fa_icon": "fas fa-box",
+            "properties": {
+                "clam_container": {
+                    "type": "string",
+                    "description": "Container image used for CLAM core processes.",
+                    "default": "docker://ghcr.io/aledavini7/clam-core:0.1.0",
+                    "hidden": true
+                },
+                "mutect2_container": {
+                    "type": "string",
+                    "description": "Container image used for the Mutect2 process.",
+                    "default": "docker://ghcr.io/aledavini7/clam-mutect2:0.1.0",
+                    "hidden": true
+                }
+            }
+        },
+        "advanced_tool_options": {
+            "title": "Advanced tool options",
+            "type": "object",
+            "fa_icon": "fas fa-tools",
+            "properties": {
+                "classifier": {
+                    "type": "string",
+                    "description": "Path to the MitoScape classifier jar inside the CLAM core container.",
+                    "default": "/opt/clam/share/mitoscape/MitoScapeClassify.jar",
+                    "hidden": true
+                },
+                "mitomap": {
+                    "type": "string",
+                    "description": "Path to the MitoScape mitomap linkage disequilibrium resource.",
+                    "default": "/opt/clam/share/mitoscape/mitomap.ld",
+                    "hidden": true
+                },
+                "model": {
+                    "type": "string",
+                    "description": "Path to the MitoScape classifier model.",
+                    "default": "/opt/clam/share/mitoscape/MTClassifierModel.RF",
+                    "hidden": true
+                },
+                "haplogrep": {
+                    "type": "string",
+                    "description": "Path to the HaploGrep3 executable.",
+                    "default": "/usr/local/bin/haplogrep3",
+                    "hidden": true
+                },
+                "haplogrep_tree": {
+                    "type": "string",
+                    "description": "HaploGrep3 phylogenetic tree identifier.",
+                    "default": "phylotree-rcrs@17.2",
+                    "hidden": true
+                },
+                "mutserve": {
+                    "type": "string",
+                    "description": "Path to the mutserve executable.",
+                    "default": "/usr/local/bin/mutserve",
+                    "hidden": true
+                },
+                "annotation": {
+                    "type": "string",
+                    "description": "Path to the mutserve rCRS annotation file.",
+                    "default": "/opt/clam/mutserve/rCRS_annotation_2020-08-20.txt",
+                    "hidden": true
+                }
+            }
+        }
+    },
+    "allOf": [
+        {
+            "$ref": "#/$defs/input_output_options"
+        },
+        {
+            "$ref": "#/$defs/reference_options"
+        },
+        {
+            "$ref": "#/$defs/container_options"
+        },
+        {
+            "$ref": "#/$defs/advanced_tool_options"
+        }
+    ]
+}
