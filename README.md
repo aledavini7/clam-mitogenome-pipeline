@@ -94,9 +94,11 @@ nextflow run clam.nf \
 | `GRCh37` | `hg19` | Yes | WGS mode for hg19/GRCh37 nuclear-only remapping. The hg19 NUMT resource path still needs final confirmation on the cluster. |
 | `rCRS` | `rcrs` | No | Mitochondrial-only mode using rCRS mapping and no nuclear NUMT correction. |
 
-Large reference genomes and GSNAP indexes are not bundled in the containers.
-They are configured in `conf/genomes.config` and currently point to the IEO
-cluster reference paths.
+Large nuclear reference genomes and nuclear-only GSNAP indexes are not bundled
+in the containers. The small rCRS GSNAP index is bundled in `clam-core` to avoid
+GSNAP index-version mismatches during mitochondrial alignment. Nuclear-only
+GSNAP indexes for NUMT correction are configured in `conf/genomes.config` and
+currently point to IEO cluster reference paths.
 
 ## Containers
 
@@ -105,7 +107,7 @@ using Docker/OCI images as the source:
 
 | Image | Purpose |
 | --- | --- |
-| `ghcr.io/aledavini7/clam-core:0.1.0` | GSNAP/GMAP, samtools, htslib/bgzip, MitoScape, mutserve, HaploGrep3, and bundled small CLAM resources. |
+| `ghcr.io/aledavini7/clam-core:0.1.1` | GSNAP/GMAP, samtools, htslib/bgzip, MitoScape, mutserve, HaploGrep3, a current-format rCRS GSNAP index, and bundled small CLAM resources. |
 | `ghcr.io/aledavini7/clam-mutect2:0.1.0` | GATK4/Mutect2 runtime. |
 
 Both images are built for `linux/amd64`.

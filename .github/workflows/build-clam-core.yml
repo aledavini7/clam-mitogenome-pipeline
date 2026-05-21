@@ -28,8 +28,10 @@ jobs:
         include:
           - name: clam-core
             context: containers/clam-core
+            version: 0.1.1
           - name: clam-mutect2
             context: containers/mutect2
+            version: 0.1.0
 
     steps:
       - name: Check out repository
@@ -55,5 +57,5 @@ jobs:
             CLAM_TARGETPLATFORM=linux/amd64
           push: true
           tags: |
-            ${{ env.REGISTRY_ROOT }}/${{ matrix.name }}:0.1.0
+            ${{ env.REGISTRY_ROOT }}/${{ matrix.name }}:${{ matrix.version }}
             ${{ env.REGISTRY_ROOT }}/${{ matrix.name }}:latest

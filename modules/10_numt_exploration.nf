@@ -209,7 +209,7 @@ process mutserve_numts {
 
     script:
     """
-    $params.mutserve call --reference $params.mutserve_fasta --output ${sample_id}_mutserve.vcf $numt_bams
+    $params.mutserve call --reference $params.mutserve_fasta --contig-name $params.mt_contig --output ${sample_id}_mutserve.vcf $numt_bams
     """
 
 }
@@ -248,7 +248,6 @@ process haplogrep1_numts {
     """
 
 }
-
 
 
 

@@ -88,7 +88,7 @@ process mutserve_0 {
 
     script:
     """
-    $params.mutserve call --reference $params.mutserve_fasta --output ${sample_id}_before_mutserve.vcf $sorted_rg_bams
+    $params.mutserve call --reference $params.mutserve_fasta --contig-name $params.mt_contig --output ${sample_id}_before_mutserve.vcf $sorted_rg_bams
     """
 
 }
@@ -107,11 +107,10 @@ process mutserve_1 {
 
     script:
     """
-    $params.mutserve call --reference $params.mutserve_fasta --output ${sample_id}_after_mutserve.vcf $sorted_rg_bams
+    $params.mutserve call --reference $params.mutserve_fasta --contig-name $params.mt_contig --output ${sample_id}_after_mutserve.vcf $sorted_rg_bams
     """
 
 }
-
 
 
 

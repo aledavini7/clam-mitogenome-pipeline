@@ -50,6 +50,8 @@ ENV PATH="/opt/conda/bin:/usr/local/bin:${PATH}" \
 RUN mkdir -p \
         /opt/clam/haplogrep3 \
         /opt/clam/mutserve \
+        /opt/clam/share/gsnap \
+        /opt/clam/share/reference \
         /opt/clam/share/mitoscape && \
     curl -fsSL \
         "https://github.com/larryns/MitoScape/releases/download/v${MITOSCAPE_VERSION}/MitoScape-${MITOSCAPE_VERSION}.jar" \
@@ -76,6 +78,12 @@ RUN mkdir -p \
         -o /tmp/haplogrep3.zip && \
     unzip -q /tmp/haplogrep3.zip -d /opt/clam/haplogrep3 && \
     chmod +x /opt/clam/haplogrep3/haplogrep3 && \
+    awk 'NR == 1 { print ">NC_012920.1"; next } { print }' /opt/clam/mutserve/rCRS.fasta \
+        > /opt/clam/share/reference/rCRS_NC_012920.1.fasta && \
+    gmap_build \
+        -D /opt/clam/share/gsnap \
+        -d rCRS_gsnap \
+        /opt/clam/share/reference/rCRS_NC_012920.1.fasta && \
     rm -rf /tmp/MTClassifierModel.RF.tar /tmp/mutserve.zip /tmp/haplogrep3.zip
 
 COPY bin/haplogrep3 bin/haplogrep bin/mutserve /usr/local/bin/
@@ -87,6 +95,7 @@ RUN chmod +x /usr/local/bin/haplogrep3 /usr/local/bin/haplogrep /usr/local/bin/m
     samtools --version | head -n 1 && \
     bgzip --version | head -n 1 && \
     mutserve --version && \
-    haplogrep3 trees
+    haplogrep3 trees && \
+    test -f /opt/clam/share/gsnap/rCRS_gsnap/rCRS_gsnap.genomefwdh
 
 WORKDIR /work
