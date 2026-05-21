@@ -80,6 +80,8 @@ RUN mkdir -p \
     chmod +x /opt/clam/haplogrep3/haplogrep3 && \
     awk 'NR == 1 { print ">NC_012920.1"; next } { print }' /opt/clam/mutserve/rCRS.fasta \
         > /opt/clam/share/reference/rCRS_NC_012920.1.fasta && \
+    samtools faidx /opt/clam/mutserve/rCRS.fasta && \
+    samtools faidx /opt/clam/share/reference/rCRS_NC_012920.1.fasta && \
     gmap_build \
         -D /opt/clam/share/gsnap \
         -d rCRS_gsnap \
@@ -96,6 +98,9 @@ RUN chmod +x /usr/local/bin/haplogrep3 /usr/local/bin/haplogrep /usr/local/bin/m
     bgzip --version | head -n 1 && \
     mutserve --version && \
     haplogrep3 trees && \
+    test -f /opt/clam/mutserve/rCRS.fasta.fai && \
+    test -f /opt/clam/share/reference/rCRS_NC_012920.1.fasta.fai && \
+    test "$(head -n 1 /opt/clam/share/reference/rCRS_NC_012920.1.fasta)" = ">NC_012920.1" && \
     test -f /opt/clam/share/gsnap/rCRS_gsnap/rCRS_gsnap.genomefwdh
 
 WORKDIR /work
