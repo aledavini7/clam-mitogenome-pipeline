@@ -31,8 +31,9 @@ include { bam2fq; alignment_Nuc } from './modules/3_NUC_alignment.nf'
 include { mitoscape } from './modules/4_Mitoscape.nf'
 include { sorting; coverage; sorting_single; coverage_single } from './modules/5_Coverage.nf'
 include { index } from './modules/6_Index.nf'
-include { mutect2; bgzip; mutserve } from './modules/7_Variant_calling.nf'
+include { mutect2; filter_mutect2; bgzip; mutserve } from './modules/7_Variant_calling.nf'
 include { haplogrep; haplogrep1 } from './modules/8_Haplogroups_assignment.nf'
+include { merge_variant_calls } from './modules/9_annotation.nf'
 
 workflow {
 
@@ -120,6 +121,7 @@ workflow {
 
         sort_ch = sorting(md_ch, mt_ch)
         cov_ch = coverage(sort_ch)
+        final_coverage_ch = cov_ch[1]
         ind_ch = index(sort_ch[1])
 
         sort_ch[1]
@@ -128,6 +130,7 @@ workflow {
     } else {
         sort_single_ch = sorting_single(md_ch)
         cov_ch = coverage_single(sort_single_ch)
+        final_coverage_ch = cov_ch
         ind_ch = index(sort_single_ch)
 
         sort_single_ch
@@ -135,10 +138,24 @@ workflow {
             .set { var_ch }
     }
 
-    vcf_ch = mutect2(var_ch)
+    raw_mutect2_ch = mutect2(var_ch)
     vcf_2_ch = mutserve(var_ch)
+
+    raw_mutect2_ch[0]
+        .combine(raw_mutect2_ch[1], by: 0)
+        .combine(raw_mutect2_ch[2], by: 0)
+        .set { mutect2_filter_input_ch }
+
+    filtered_mutect2_ch = filter_mutect2(mutect2_filter_input_ch)
+
+    filtered_mutect2_ch[0]
+        .combine(vcf_2_ch[0], by: 0)
+        .combine(final_coverage_ch, by: 0)
+        .set { annotation_input_ch }
+
+    variant_summary_ch = merge_variant_calls(annotation_input_ch)
     
-    gz_ch = bgzip(vcf_ch[0])
+    gz_ch = bgzip(filtered_mutect2_ch[0])
     
     hplg_ch = haplogrep(gz_ch)
     hplg_2_ch = haplogrep1(vcf_2_ch[0])

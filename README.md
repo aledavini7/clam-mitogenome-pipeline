@@ -31,8 +31,11 @@ flowchart TD
     J --> K
     K --> L[Mutect2 mitochondrial calling]
     K --> M[mutserve calling]
-    L --> N[HaploGrep3 haplogroup assignment]
+    L --> L1[FilterMutectCalls mitochondrial filtering]
+    L1 --> N[HaploGrep3 haplogroup assignment]
     M --> O[HaploGrep3 haplogroup assignment]
+    L1 --> P[Unified heteroplasmy table]
+    M --> P
 ```
 
 ## Why Remap?
@@ -111,6 +114,7 @@ using Docker/OCI images as the source:
 | --- | --- |
 | `ghcr.io/aledavini7/clam-core:0.1.2` | GSNAP/GMAP, samtools, htslib/bgzip, MitoScape, mutserve, HaploGrep3, a current-format rCRS GSNAP index, indexed rCRS FASTA resources, and bundled small CLAM resources. |
 | `ghcr.io/aledavini7/clam-mutect2:0.1.0` | GATK4/Mutect2 runtime. |
+| `ghcr.io/aledavini7/clam-annotation:0.1.0` | Lightweight Python runtime for mitochondrial variant summary and heteroplasmy tables. |
 
 Both images are built for `linux/amd64`.
 
@@ -174,9 +178,12 @@ Core output categories include:
   correction
 - BAM index files
 - coverage files
-- Mutect2 VCFs
+- raw and FilterMutectCalls-filtered Mutect2 VCFs
 - mutserve VCFs
 - HaploGrep3 haplogroup reports
+- annotation TSVs under `results/annotation/<sample_id>/`, merging filtered
+  Mutect2 calls, mutserve calls, final coverage, heteroplasmy estimates, Wilson
+  confidence intervals, and confidence tiers
 
 ## Current Development Status
 
@@ -187,12 +194,16 @@ Implemented in the modernized core:
 - genome mode selection with `GRCh38`, `GRCh37`, and `rCRS`
 - containerized CLAM core runtime
 - containerized Mutect2 runtime
+- FilterMutectCalls mitochondrial filtering
+- first-pass unified heteroplasmy summary table
 - SLURM/Singularity-oriented configuration
 - `nextflow_schema.json` for Seqera Launchpad
 
 Still planned:
 
-- run the first Seqera Launchpad test
+- validate the annotation branch from Seqera Launchpad
+- add vcf2maf/MAF generation with a containerized VEP/vcf2maf runtime
+- add MITOMAP/population-frequency annotation
 - validate and finalize GRCh37/hg19 NUMT resources
 - convert remaining annotation logic into a clean downstream workflow
 - decide how WES-specific logic should be exposed

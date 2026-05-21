@@ -19,6 +19,29 @@ process mutect2 {
 
 }
 
+process filter_mutect2 {
+
+    publishDir "${params.outdir}/${sample_id}", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(vcfs), path(vcf_idx), path(vcf_stats)
+
+    output:
+    tuple val(sample_id), path('*_mutect2_filtered.vcf')
+    tuple val(sample_id), path('*_mutect2_filtered.vcf.idx')
+
+    script:
+    """
+    gatk FilterMutectCalls \
+        --mitochondria-mode true \
+        --reference $params.fasta \
+        --variant $vcfs \
+        --stats $vcf_stats \
+        --output ${sample_id}_mutect2_filtered.vcf
+    """
+
+}
+
 process bgzip {
 
     input:

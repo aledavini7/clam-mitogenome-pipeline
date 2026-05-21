@@ -49,6 +49,42 @@
       "description": "Container image used for the Mutect2 process.",
       "hidden": true
     },
+    "annotation_container": {
+      "type": "string",
+      "default": "docker://ghcr.io/aledavini7/clam-annotation:0.1.0",
+      "description": "Container image used for annotation summary processes.",
+      "hidden": true
+    },
+    "annotation_high_depth": {
+      "type": "integer",
+      "default": 100,
+      "description": "Coverage depth threshold for high-confidence heteroplasmy summaries.",
+      "hidden": true
+    },
+    "annotation_medium_depth": {
+      "type": "integer",
+      "default": 30,
+      "description": "Coverage depth threshold for medium-confidence heteroplasmy summaries.",
+      "hidden": true
+    },
+    "annotation_high_alt_reads": {
+      "type": "integer",
+      "default": 10,
+      "description": "Alternative-read threshold for high-confidence heteroplasmy summaries.",
+      "hidden": true
+    },
+    "annotation_medium_alt_reads": {
+      "type": "integer",
+      "default": 3,
+      "description": "Alternative-read threshold for medium-confidence heteroplasmy summaries.",
+      "hidden": true
+    },
+    "annotation_max_af_discordance": {
+      "type": "number",
+      "default": 0.1,
+      "description": "Maximum caller allele-fraction difference allowed for high-confidence consensus calls.",
+      "hidden": true
+    },
     "classifier": {
       "type": "string",
       "default": "/opt/clam/share/mitoscape/MitoScapeClassify.jar",

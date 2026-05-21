@@ -32,6 +32,9 @@ jobs:
           - name: clam-mutect2
             context: containers/mutect2
             version: 0.1.0
+          - name: clam-annotation
+            context: containers/annotation
+            version: 0.1.0
 
     steps:
       - name: Check out repository
