@@ -90,7 +90,7 @@ nextflow run clam.nf \
 
 | Genome | Aliases | NUMT correction | Intended use |
 | --- | --- | --- | --- |
-| `GRCh38` | `hg38` | Yes | Default WGS mode with hg38 nuclear-only remapping. |
+| `GRCh38` | `hg38` | Yes | Default WGS mode with GENCODE release 49 GRCh38 nuclear-only remapping. |
 | `GRCh37` | `hg19` | Yes | WGS mode for hg19/GRCh37 nuclear-only remapping. The hg19 NUMT resource path still needs final confirmation on the cluster. |
 | `rCRS` | `rcrs` | No | Mitochondrial-only mode using rCRS mapping and no nuclear NUMT correction. |
 
@@ -101,6 +101,13 @@ rCRS FASTA used by mutserve is also indexed inside the image, so mutserve does
 not need to write index files into the read-only container filesystem.
 Nuclear-only GSNAP indexes for NUMT correction are configured in
 `conf/genomes.config` and currently point to IEO cluster reference paths.
+The GRCh38 nuclear-only index is built with `clam-core:0.1.2` / GSNAP
+2025-07-31 from `GRCh38.primary_assembly.nuclear_only.fa`, derived from GENCODE
+release 49 `GRCh38.primary_assembly.genome.fa.gz`, and stored at:
+
+```text
+/hpcnfs/scratch/ED/genome/clam_refs/gsnap_GRCh38_gencode49
+```
 
 ## Containers
 
