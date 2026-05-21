@@ -46,7 +46,7 @@ process get_the_MD {
 
 	script:
 	"""
-	samtools calmd -e --output-fmt BAM $bams $params.fasta > ${sample_id}_MT_MD.bam
+	samtools calmd --output-fmt BAM $bams $params.fasta > ${sample_id}_MT_MD.bam
 	"""
 	
 }
