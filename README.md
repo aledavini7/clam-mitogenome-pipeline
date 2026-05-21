@@ -96,9 +96,11 @@ nextflow run clam.nf \
 
 Large nuclear reference genomes and nuclear-only GSNAP indexes are not bundled
 in the containers. The small rCRS GSNAP index is bundled in `clam-core` to avoid
-GSNAP index-version mismatches during mitochondrial alignment. Nuclear-only
-GSNAP indexes for NUMT correction are configured in `conf/genomes.config` and
-currently point to IEO cluster reference paths.
+GSNAP index-version mismatches during mitochondrial alignment. The normalized
+rCRS FASTA used by mutserve is also indexed inside the image, so mutserve does
+not need to write index files into the read-only container filesystem.
+Nuclear-only GSNAP indexes for NUMT correction are configured in
+`conf/genomes.config` and currently point to IEO cluster reference paths.
 
 ## Containers
 
@@ -107,7 +109,7 @@ using Docker/OCI images as the source:
 
 | Image | Purpose |
 | --- | --- |
-| `ghcr.io/aledavini7/clam-core:0.1.1` | GSNAP/GMAP, samtools, htslib/bgzip, MitoScape, mutserve, HaploGrep3, a current-format rCRS GSNAP index, and bundled small CLAM resources. |
+| `ghcr.io/aledavini7/clam-core:0.1.2` | GSNAP/GMAP, samtools, htslib/bgzip, MitoScape, mutserve, HaploGrep3, a current-format rCRS GSNAP index, indexed rCRS FASTA resources, and bundled small CLAM resources. |
 | `ghcr.io/aledavini7/clam-mutect2:0.1.0` | GATK4/Mutect2 runtime. |
 
 Both images are built for `linux/amd64`.
