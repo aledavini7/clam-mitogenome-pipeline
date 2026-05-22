@@ -29,6 +29,9 @@ jobs:
           - name: clam-core
             context: containers/clam-core
             version: 0.1.2
+          - name: clam-mitoscape
+            context: containers/mitoscape
+            version: 0.1.0
           - name: clam-mutect2
             context: containers/mutect2
             version: 0.1.0

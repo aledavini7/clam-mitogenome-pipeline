@@ -117,16 +117,17 @@ using Docker/OCI images as the source:
 | Image | Purpose |
 | --- | --- |
 | `ghcr.io/aledavini7/clam-core:0.1.2` | GSNAP/GMAP, samtools, htslib/bgzip, MitoScape, mutserve, HaploGrep3, a current-format rCRS GSNAP index, indexed rCRS FASTA resources, and bundled small CLAM resources. |
+| `ghcr.io/aledavini7/clam-mitoscape:0.1.0` | Java 8 runtime for the Spark-based MitoScape NUMT classification step. |
 | `ghcr.io/aledavini7/clam-mutect2:0.1.0` | GATK4/Mutect2 runtime. |
 
 Both images are built for `linux/amd64`.
-MitoScape is run inside `clam-core` with Java module-opening flags configured
-by `params.mitoscape_java_opts`, because its bundled Spark runtime needs access
-to Java internals that Java 17 otherwise blocks.
+MitoScape runs in its own Java 8 container because its bundled Spark/Scala
+runtime is not fully compatible with the Java 17 runtime used by `clam-core`.
 
 Container build definitions live in:
 
 - `containers/clam-core/`
+- `containers/mitoscape/`
 - `containers/mutect2/`
 
 The GitHub Actions workflow in `.github/workflows/build-clam-core.yml` builds
