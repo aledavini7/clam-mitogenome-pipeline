@@ -8,6 +8,8 @@ on:
       - master
     paths:
       - containers/clam-core/**
+      - containers/annotation/**
+      - containers/mitoscape/**
       - containers/mutect2/**
       - .github/workflows/build-clam-core.yml
 
@@ -37,7 +39,7 @@ jobs:
             version: 0.1.0
           - name: clam-annotation
             context: containers/annotation
-            version: 0.1.0
+            version: 0.1.1
 
     steps:
       - name: Check out repository

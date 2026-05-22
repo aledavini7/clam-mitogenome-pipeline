@@ -14,8 +14,10 @@ RUN echo "Building CLAM annotation for ${CLAM_TARGETPLATFORM} from ${BUILDPLATFO
     apt-get update && \
     apt-get install -y --no-install-recommends \
         bash \
-        ca-certificates && \
+        ca-certificates \
+        procps && \
     rm -rf /var/lib/apt/lists/* && \
+    ps --version >/dev/null && \
     python3 --version
 
 WORKDIR /work

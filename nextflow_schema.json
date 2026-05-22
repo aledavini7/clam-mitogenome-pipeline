@@ -61,7 +61,7 @@
     },
     "annotation_container": {
       "type": "string",
-      "default": "docker://ghcr.io/aledavini7/clam-annotation:0.1.0",
+      "default": "docker://ghcr.io/aledavini7/clam-annotation:0.1.1",
       "description": "Container image used for annotation summary processes.",
       "hidden": true
     },
