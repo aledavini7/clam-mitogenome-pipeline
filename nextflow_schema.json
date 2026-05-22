@@ -95,6 +95,18 @@
       "description": "Maximum caller allele-fraction difference allowed for high-confidence consensus calls.",
       "hidden": true
     },
+    "maf_center": {
+      "type": "string",
+      "default": "CLAM",
+      "description": "Center value written to lightweight CLAM MAF files.",
+      "hidden": true
+    },
+    "maf_ncbi_build": {
+      "type": "string",
+      "default": "rCRS",
+      "description": "NCBI_Build value written to lightweight CLAM MAF files.",
+      "hidden": true
+    },
     "classifier": {
       "type": "string",
       "default": "/opt/clam/share/mitoscape/MitoScapeClassify.jar",

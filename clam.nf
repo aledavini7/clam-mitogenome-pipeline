@@ -41,7 +41,7 @@ include { sorting; coverage; sorting_single; coverage_single } from './modules/5
 include { index } from './modules/6_Index.nf'
 include { mutect2; filter_mutect2; bgzip; mutserve } from './modules/7_Variant_calling.nf'
 include { haplogrep; haplogrep1 } from './modules/8_Haplogroups_assignment.nf'
-include { merge_variant_calls } from './modules/9_annotation.nf'
+include { merge_variant_calls; annotation_mafs } from './modules/9_annotation.nf'
 
 workflow {
 
@@ -165,6 +165,7 @@ workflow {
         .set { annotation_input_ch }
 
     variant_summary_ch = merge_variant_calls(annotation_input_ch)
+    variant_maf_ch = annotation_mafs(variant_summary_ch)
     
     gz_ch = bgzip(filtered_mutect2_ch[0])
     

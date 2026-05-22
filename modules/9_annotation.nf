@@ -31,3 +31,58 @@ process merge_variant_calls {
     """
 
 }
+
+process annotation_mafs {
+
+    publishDir "${params.outdir}/${sample_id}/annotation/mafs", mode: 'copy'
+
+    input:
+    tuple val(sample_id),
+        path(mutect2_tsv),
+        path(mutserve_tsv),
+        path(all_tsv),
+        path(confidence_filtered_tsv)
+
+    output:
+    tuple val(sample_id),
+        path("${sample_id}_mutect2_variants.maf"),
+        path("${sample_id}_mutserve_variants.maf"),
+        path("${sample_id}_mitochondrial_variants_all.maf"),
+        path("${sample_id}_mitochondrial_variants_confidence_filtered.maf")
+
+    script:
+    """
+    python3 ${projectDir}/bin/clam_tsv_to_maf.py \
+        --sample-id $sample_id \
+        --input $mutect2_tsv \
+        --output ${sample_id}_mutect2_variants.maf \
+        --source-table mutect2 \
+        --center $params.maf_center \
+        --ncbi-build $params.maf_ncbi_build
+
+    python3 ${projectDir}/bin/clam_tsv_to_maf.py \
+        --sample-id $sample_id \
+        --input $mutserve_tsv \
+        --output ${sample_id}_mutserve_variants.maf \
+        --source-table mutserve \
+        --center $params.maf_center \
+        --ncbi-build $params.maf_ncbi_build
+
+    python3 ${projectDir}/bin/clam_tsv_to_maf.py \
+        --sample-id $sample_id \
+        --input $all_tsv \
+        --output ${sample_id}_mitochondrial_variants_all.maf \
+        --source-table consensus_all \
+        --center $params.maf_center \
+        --ncbi-build $params.maf_ncbi_build
+
+    python3 ${projectDir}/bin/clam_tsv_to_maf.py \
+        --sample-id $sample_id \
+        --input $confidence_filtered_tsv \
+        --output ${sample_id}_mitochondrial_variants_confidence_filtered.maf \
+        --source-table consensus_confidence_filtered \
+        --center $params.maf_center \
+        --ncbi-build $params.maf_ncbi_build
+    """
+
+}

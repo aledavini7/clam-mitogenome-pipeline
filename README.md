@@ -203,6 +203,11 @@ Core output categories include:
   confidence-filtered consensus table retaining `HIGH` and `MEDIUM` calls with
   final coverage, heteroplasmy estimates, Wilson confidence intervals, and
   confidence tiers
+- lightweight maftools-compatible MAF files under
+  `results/<sample_id>/annotation/mafs/`, generated from the same annotation
+  TSVs. These first-pass MAFs use conservative mitochondrial placeholders
+  (`Hugo_Symbol=MTDNA`, `Variant_Classification=RNA`) until richer MITOMAP/VEP
+  annotation is added.
 
 ## Current Development Status
 
@@ -216,13 +221,15 @@ Implemented in the modernized core:
 - containerized MitoScape Java 8 runtime
 - FilterMutectCalls mitochondrial filtering
 - first-pass unified heteroplasmy summary table
+- lightweight maftools-compatible MAF generation from CLAM annotation TSVs
 - SLURM/Singularity-oriented configuration
 - `nextflow_schema.json` for Seqera Launchpad
 
 Still planned:
 
 - validate the annotation branch from Seqera Launchpad
-- add vcf2maf/MAF generation with a containerized VEP/vcf2maf runtime
+- add richer VEP/vcf2maf-style consequence annotation once the cache/resource
+  strategy is finalized
 - add MITOMAP/population-frequency annotation
 - convert remaining annotation logic into a clean downstream workflow
 - decide how WES-specific logic should be exposed
