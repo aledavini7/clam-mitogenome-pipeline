@@ -47,6 +47,12 @@ core workflow conservative by accepting:
 This makes downstream mitochondrial analyses more comparable because every
 sample passes through the same mapping and filtering logic.
 
+CLAM intentionally creates two MD-tagged mitochondrial BAM representations when
+NUMT correction is enabled. The normal `samtools calmd` BAM keeps real read
+bases for Mutect2 and mutserve. A separate MitoScape-only `samtools calmd -e`
+BAM uses `=` for reference-matching bases, preserving compatibility with
+MitoScape's MD parser without exposing that representation to variant callers.
+
 ## NUMT-Aware Strategy
 
 Nuclear mitochondrial DNA segments, or NUMTs, can mimic mitochondrial signal in

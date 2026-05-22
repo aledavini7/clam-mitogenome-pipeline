@@ -26,7 +26,7 @@ def normalizeGenomeName(value) {
 }
 
 include { sorting_1; bam2fqgz } from './modules/1_data_preparation.nf'
-include { alignment_MT; get_the_MD } from './modules/2_MT_alignment.nf'
+include { alignment_MT; get_the_MD; get_the_MD_mitoscape } from './modules/2_MT_alignment.nf'
 include { bam2fq; alignment_Nuc } from './modules/3_NUC_alignment.nf'
 include { mitoscape } from './modules/4_Mitoscape.nf'
 include { sorting; coverage; sorting_single; coverage_single } from './modules/5_Coverage.nf'
@@ -105,10 +105,11 @@ workflow {
     md_ch = get_the_MD(bams_ch)
 
     if (run_numt_correction) {
+        md_mitoscape_ch = get_the_MD_mitoscape(bams_ch)
         fq_ch = bam2fq(bams_ch)
         nuc_ch = alignment_Nuc(fq_ch)
 
-        md_ch
+        md_mitoscape_ch
             .combine(nuc_ch, by: 0)
             .set { mito_ch }
 
