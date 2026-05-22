@@ -21,12 +21,12 @@ flowchart TD
     B1 --> B2[Convert BAM to FASTQ]
     B2 --> C
     C --> D[Add MD tags with samtools calmd]
-    D --> E{NUMT correction?}
-    E -->|GRCh38 or GRCh37| F[Convert candidate MT BAM to FASTQ]
+    D --> E{Analysis mode}
+    E -->|wgs_numt_correction| F[Convert candidate MT BAM to FASTQ]
     F --> G[Re-align candidate reads to nuclear-only genome]
     G --> H[MitoScape classification]
     H --> I[Final NUMT-corrected MT BAM]
-    E -->|rCRS only| J[Use rCRS MT BAM directly]
+    E -->|rcrs_only| J[Use rCRS MT BAM directly]
     I --> K[Sort, index, coverage]
     J --> K
     K --> L[Mutect2 mitochondrial calling]
@@ -50,11 +50,16 @@ core workflow conservative by accepting:
 This makes downstream mitochondrial analyses more comparable because every
 sample passes through the same mapping and filtering logic.
 
+CLAM intentionally creates two MD-tagged mitochondrial BAM representations when
+NUMT correction is enabled. The normal `samtools calmd` BAM keeps real read
+bases for Mutect2 and mutserve. A separate MitoScape-only `samtools calmd -e`
+BAM uses `=` for reference-matching bases, preserving compatibility with
+MitoScape's MD parser without exposing that representation to variant callers.
+
 ## NUMT-Aware Strategy
 
 Nuclear mitochondrial DNA segments, or NUMTs, can mimic mitochondrial signal in
-WGS data. For genome modes that include a nuclear reference, CLAM uses the
-classic MitoScape logic:
+WGS data. In `wgs_numt_correction` mode, CLAM uses the classic MitoScape logic:
 
 1. Align reads to the mitochondrial reference.
 2. Extract candidate mitochondrial reads.
@@ -62,9 +67,9 @@ classic MitoScape logic:
 4. Use MitoScape, known NUMT regions, linkage disequilibrium data, and the
    bundled classifier model to retain likely true mitochondrial reads.
 
-For `--genome rCRS`, the pipeline intentionally skips the nuclear remapping and
-MitoScape branch. This mode is useful for mitochondrial-only analyses, but it is
-not NUMT-corrected.
+For `--analysis_mode rcrs_only`, the pipeline intentionally skips the nuclear
+remapping and MitoScape branch. This mode is useful for mitochondrial-only
+analyses, WES-style tests, and quick checks, but it is not NUMT-corrected.
 
 ## Supported Inputs
 
@@ -79,23 +84,22 @@ Example runs:
 nextflow run clam.nf \
   --input 'data/*_{R1,R2}.fastq.gz' \
   --input_type fastq \
-  --genome GRCh38
+  --analysis_mode wgs_numt_correction
 ```
 
 ```bash
 nextflow run clam.nf \
   --input 'data/*.bam' \
   --input_type bam \
-  --genome GRCh38
+  --analysis_mode wgs_numt_correction
 ```
 
-## Genome Modes
+## Analysis Modes
 
-| Genome | Aliases | NUMT correction | Intended use |
+| Mode | NUMT correction | Internal references | Intended use |
 | --- | --- | --- | --- |
-| `GRCh38` | `hg38` | Yes | Default WGS mode with hg38 nuclear-only remapping. |
-| `GRCh37` | `hg19` | Yes | WGS mode for hg19/GRCh37 nuclear-only remapping. The hg19 NUMT resource path still needs final confirmation on the cluster. |
-| `rCRS` | `rcrs` | No | Mitochondrial-only mode using rCRS mapping and no nuclear NUMT correction. |
+| `wgs_numt_correction` | Yes | rCRS plus GRCh38 nuclear-only remapping | Full WGS mode with MitoScape NUMT correction. |
+| `rcrs_only` | No | rCRS only | Short mitochondrial-only mode with no nuclear remapping. |
 
 Large nuclear reference genomes and nuclear-only GSNAP indexes are not bundled
 in the containers. The small rCRS GSNAP index is bundled in `clam-core` to avoid
@@ -104,6 +108,14 @@ rCRS FASTA used by mutserve is also indexed inside the image, so mutserve does
 not need to write index files into the read-only container filesystem.
 Nuclear-only GSNAP indexes for NUMT correction are configured in
 `conf/genomes.config` and currently point to IEO cluster reference paths.
+The `wgs_numt_correction` mode always uses a GRCh38 nuclear-only index built
+with `clam-core:0.1.2` / GSNAP 2025-07-31 from
+`GRCh38.primary_assembly.nuclear_only.fa`, derived from GENCODE release 49
+`GRCh38.primary_assembly.genome.fa.gz`, and stored at:
+
+```text
+/hpcnfs/scratch/ED/genome/clam_refs/gsnap_GRCh38_gencode49
+```
 
 ## Containers
 
@@ -113,14 +125,18 @@ using Docker/OCI images as the source:
 | Image | Purpose |
 | --- | --- |
 | `ghcr.io/aledavini7/clam-core:0.1.2` | GSNAP/GMAP, samtools, htslib/bgzip, MitoScape, mutserve, HaploGrep3, a current-format rCRS GSNAP index, indexed rCRS FASTA resources, and bundled small CLAM resources. |
+| `ghcr.io/aledavini7/clam-mitoscape:0.1.0` | Java 8 runtime for the Spark-based MitoScape NUMT classification step. |
 | `ghcr.io/aledavini7/clam-mutect2:0.1.0` | GATK4/Mutect2 runtime. |
 | `ghcr.io/aledavini7/clam-annotation:0.1.0` | Lightweight Python runtime for mitochondrial variant summary and heteroplasmy tables. |
 
 Both images are built for `linux/amd64`.
+MitoScape runs in its own Java 8 container because its bundled Spark/Scala
+runtime is not fully compatible with the Java 17 runtime used by `clam-core`.
 
 Container build definitions live in:
 
 - `containers/clam-core/`
+- `containers/mitoscape/`
 - `containers/mutect2/`
 
 The GitHub Actions workflow in `.github/workflows/build-clam-core.yml` builds
@@ -130,7 +146,7 @@ and publishes both container images to GHCR.
 
 The repository includes `nextflow_schema.json` in the root directory. Seqera
 uses this file to build the Launchpad parameter form for `input`, `input_type`,
-`genome`, and `outdir`.
+`analysis_mode`, and `outdir`.
 
 Suggested Launchpad settings for the first test runs:
 
@@ -148,7 +164,7 @@ Minimal run parameters:
 {
   "input": "/path/to/data/*_{R1,R2}.fastq.gz",
   "input_type": "fastq",
-  "genome": "GRCh38",
+  "analysis_mode": "wgs_numt_correction",
   "outdir": "results"
 }
 ```
@@ -159,7 +175,7 @@ For BAM input:
 {
   "input": "/path/to/data/*.bam",
   "input_type": "bam",
-  "genome": "GRCh38",
+  "analysis_mode": "wgs_numt_correction",
   "outdir": "results"
 }
 ```
@@ -191,9 +207,10 @@ Implemented in the modernized core:
 
 - DSL2 Nextflow workflow in `clam.nf`
 - FASTQ and BAM input modes
-- genome mode selection with `GRCh38`, `GRCh37`, and `rCRS`
+- analysis mode selection with `wgs_numt_correction` and `rcrs_only`
 - containerized CLAM core runtime
 - containerized Mutect2 runtime
+- containerized MitoScape Java 8 runtime
 - FilterMutectCalls mitochondrial filtering
 - first-pass unified heteroplasmy summary table
 - SLURM/Singularity-oriented configuration
@@ -204,7 +221,6 @@ Still planned:
 - validate the annotation branch from Seqera Launchpad
 - add vcf2maf/MAF generation with a containerized VEP/vcf2maf runtime
 - add MITOMAP/population-frequency annotation
-- validate and finalize GRCh37/hg19 NUMT resources
 - convert remaining annotation logic into a clean downstream workflow
 - decide how WES-specific logic should be exposed
 - add test profiles with small synthetic fixtures

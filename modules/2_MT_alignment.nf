@@ -50,3 +50,18 @@ process get_the_MD {
 	"""
 	
 }
+
+process get_the_MD_mitoscape {
+
+	input:
+	tuple val(sample_id), path(bams)
+
+	output:
+	tuple val(sample_id), path('*_MT_MD.bam')
+
+	script:
+	"""
+	samtools calmd -e --output-fmt BAM $bams $params.fasta > ${sample_id}_MT_MD.bam
+	"""
+
+}

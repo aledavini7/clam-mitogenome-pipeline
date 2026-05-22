@@ -20,15 +20,19 @@
       ],
       "default": "fastq"
     },
+    "analysis_mode": {
+      "type": "string",
+      "description": "CLAM analysis mode. Use wgs_numt_correction for the full WGS workflow with GRCh38 nuclear remapping and MitoScape NUMT correction, or rcrs_only for the short mitochondrial-only workflow.",
+      "enum": [
+        "wgs_numt_correction",
+        "rcrs_only"
+      ],
+      "default": "wgs_numt_correction"
+    },
     "genome": {
       "type": "string",
-      "description": "Reference mode. GRCh38 and GRCh37 include nuclear-only remapping for NUMT correction. rCRS runs mitochondrial-only mode and skips NUMT correction.",
-      "enum": [
-        "GRCh38",
-        "GRCh37",
-        "rCRS"
-      ],
-      "default": "GRCh38"
+      "description": "Legacy parameter. Prefer analysis_mode. Accepted legacy aliases include GRCh38/hg38 for wgs_numt_correction and rCRS for rcrs_only.",
+      "hidden": true
     },
     "outdir": {
       "type": "string",
@@ -47,6 +51,12 @@
       "type": "string",
       "default": "docker://ghcr.io/aledavini7/clam-mutect2:0.1.0",
       "description": "Container image used for the Mutect2 process.",
+      "hidden": true
+    },
+    "mitoscape_container": {
+      "type": "string",
+      "default": "docker://ghcr.io/aledavini7/clam-mitoscape:0.1.0",
+      "description": "Container image used for the MitoScape process.",
       "hidden": true
     },
     "annotation_container": {
@@ -88,7 +98,7 @@
     "classifier": {
       "type": "string",
       "default": "/opt/clam/share/mitoscape/MitoScapeClassify.jar",
-      "description": "Path to the MitoScape classifier jar inside the CLAM core container.",
+      "description": "Path to the MitoScape classifier jar inside the MitoScape container.",
       "hidden": true
     },
     "mitomap": {

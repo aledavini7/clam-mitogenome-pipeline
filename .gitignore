@@ -4,6 +4,7 @@ final_results/**
 vm_results/**
 work/**
 .nextflow.log*
+.DS_Store
 bozza.nf
 old_files/**
 vm_results/**

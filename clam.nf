@@ -4,29 +4,37 @@
 
 // Example:
 // nextflow run clam.nf --input 'data/*_{R1,R2}.fastq.gz' --input_type fastq
-// nextflow run clam.nf --input 'data/*.bam' --input_type bam --genome GRCh38
+// nextflow run clam.nf --input 'data/*.bam' --input_type bam --analysis_mode wgs_numt_correction
 
 nextflow.enable.dsl = 2
 
-def normalizeGenomeName(value) {
+def normalizeAnalysisMode(value) {
     def requested = value?.toString()
     if (!requested) {
         return null
     }
 
     def aliases = [
-        'grch38': 'GRCh38',
-        'hg38'  : 'GRCh38',
-        'grch37': 'GRCh37',
-        'hg19'  : 'GRCh37',
-        'rcrs'  : 'rCRS'
+        'wgs_numt_correction': 'wgs_numt_correction',
+        'wgs-numt-correction': 'wgs_numt_correction',
+        'wgs'                : 'wgs_numt_correction',
+        'numt'               : 'wgs_numt_correction',
+        'full'               : 'wgs_numt_correction',
+        'grch38'             : 'wgs_numt_correction',
+        'hg38'               : 'wgs_numt_correction',
+        'rcrs_only'          : 'rcrs_only',
+        'rcrs-only'          : 'rcrs_only',
+        'mitochondrial_only' : 'rcrs_only',
+        'mitochondrial-only' : 'rcrs_only',
+        'short'              : 'rcrs_only',
+        'rcrs'               : 'rcrs_only'
     ]
 
     return aliases[requested.toLowerCase()]
 }
 
 include { sorting_1; bam2fqgz } from './modules/1_data_preparation.nf'
-include { alignment_MT; get_the_MD } from './modules/2_MT_alignment.nf'
+include { alignment_MT; get_the_MD; get_the_MD_mitoscape } from './modules/2_MT_alignment.nf'
 include { bam2fq; alignment_Nuc } from './modules/3_NUC_alignment.nf'
 include { mitoscape } from './modules/4_Mitoscape.nf'
 include { sorting; coverage; sorting_single; coverage_single } from './modules/5_Coverage.nf'
@@ -50,23 +58,24 @@ workflow {
         error "Unsupported --input_type '${params.input_type}'. Supported values: fastq, bam"
     }
 
-    genome = normalizeGenomeName(params.genome)
-    if (!genome) {
-        error "Unsupported --genome '${params.genome}'. Supported values: GRCh38, GRCh37, rCRS"
+    analysis_mode = normalizeAnalysisMode(params.analysis_mode ?: params.genome)
+    if (!analysis_mode) {
+        error "Unsupported --analysis_mode '${params.analysis_mode ?: params.genome}'. Supported values: wgs_numt_correction, rcrs_only"
     }
 
-    if (!params.genomes || !params.genomes[genome]) {
-        error "Missing configuration for genome '${genome}'. Check conf/genomes.config"
+    if (!params.analysis_modes || !params.analysis_modes[analysis_mode]) {
+        error "Missing configuration for analysis mode '${analysis_mode}'. Check conf/genomes.config"
     }
 
     run_numt_correction = params.run_numt_correction != null && params.run_numt_correction.toString().toBoolean()
+    reference_set = params.reference_set ?: (run_numt_correction ? 'GRCh38+rCRS' : 'rCRS')
 
     if (!params.datadir || !params.mt_gsnap_db || !params.fasta || !params.mutserve_fasta || !params.mt_contig) {
-        error "Incomplete mitochondrial reference configuration for genome '${genome}'"
+        error "Incomplete mitochondrial reference configuration for analysis mode '${analysis_mode}'"
     }
 
     if (run_numt_correction && (!params.genomedir || !params.nuc_gsnap_db || !params.numt)) {
-        error "Incomplete nuclear/NUMTs reference configuration for genome '${genome}'"
+        error "Incomplete nuclear/NUMTs reference configuration for analysis mode '${analysis_mode}'"
     }
 
     log.info """\
@@ -74,7 +83,8 @@ workflow {
         ===============================
         input           : ${params.input}
         input_type      : ${input_type}
-        genome          : ${genome}
+        analysis_mode   : ${analysis_mode}
+        reference_set   : ${reference_set}
         outdir          : ${params.outdir}
         mt_gsnap_dir    : ${params.datadir}
         mt_gsnap_db     : ${params.mt_gsnap_db}
@@ -106,10 +116,11 @@ workflow {
     md_ch = get_the_MD(bams_ch)
 
     if (run_numt_correction) {
+        md_mitoscape_ch = get_the_MD_mitoscape(bams_ch)
         fq_ch = bam2fq(bams_ch)
         nuc_ch = alignment_Nuc(fq_ch)
 
-        md_ch
+        md_mitoscape_ch
             .combine(nuc_ch, by: 0)
             .set { mito_ch }
 
