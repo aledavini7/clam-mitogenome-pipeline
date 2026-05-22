@@ -208,6 +208,16 @@ Core output categories include:
   TSVs. These first-pass MAFs use conservative mitochondrial placeholders
   (`Hugo_Symbol=MTDNA`, `Variant_Classification=RNA`) until richer MITOMAP/VEP
   annotation is added.
+- optional MITOMAP-annotated TSVs under
+  `results/<sample_id>/annotation/mitomap/` when `--mitomap_variant_table` is
+  provided. CLAM expects a local MITOMAP-derived TSV/CSV file and performs exact
+  allele matching when possible, falling back to position-level matching.
+
+MITOMAP is maintained as a human mitochondrial genome database and reports
+published data on human mtDNA variation. Because MITOMAP resources and terms of
+use should be managed explicitly by the user/institute, CLAM does not bundle a
+MITOMAP table. Use `--mitomap_variant_table /path/to/mitomap_table.tsv` to add
+this annotation layer.
 
 ## Current Development Status
 
@@ -222,6 +232,7 @@ Implemented in the modernized core:
 - FilterMutectCalls mitochondrial filtering
 - first-pass unified heteroplasmy summary table
 - lightweight maftools-compatible MAF generation from CLAM annotation TSVs
+- optional MITOMAP table annotation for CLAM annotation TSVs
 - SLURM/Singularity-oriented configuration
 - `nextflow_schema.json` for Seqera Launchpad
 
@@ -230,7 +241,6 @@ Still planned:
 - validate the annotation branch from Seqera Launchpad
 - add richer VEP/vcf2maf-style consequence annotation once the cache/resource
   strategy is finalized
-- add MITOMAP/population-frequency annotation
 - convert remaining annotation logic into a clean downstream workflow
 - decide how WES-specific logic should be exposed
 - add test profiles with small synthetic fixtures

@@ -86,3 +86,51 @@ process annotation_mafs {
     """
 
 }
+
+process mitomap_annotation {
+
+    publishDir "${params.outdir}/${sample_id}/annotation/mitomap", mode: 'copy'
+
+    input:
+    tuple val(sample_id),
+        path(mutect2_tsv),
+        path(mutserve_tsv),
+        path(all_tsv),
+        path(confidence_filtered_tsv),
+        path(mitomap_table)
+
+    output:
+    tuple val(sample_id),
+        path("${sample_id}_mutect2_variants_mitomap.tsv"),
+        path("${sample_id}_mutserve_variants_mitomap.tsv"),
+        path("${sample_id}_mitochondrial_variants_all_mitomap.tsv"),
+        path("${sample_id}_mitochondrial_variants_confidence_filtered_mitomap.tsv")
+
+    script:
+    """
+    python3 ${projectDir}/bin/clam_annotate_mitomap.py \
+        --mitomap $mitomap_table \
+        --input $mutect2_tsv \
+        --output ${sample_id}_mutect2_variants_mitomap.tsv \
+        --keep-columns $params.mitomap_keep_columns
+
+    python3 ${projectDir}/bin/clam_annotate_mitomap.py \
+        --mitomap $mitomap_table \
+        --input $mutserve_tsv \
+        --output ${sample_id}_mutserve_variants_mitomap.tsv \
+        --keep-columns $params.mitomap_keep_columns
+
+    python3 ${projectDir}/bin/clam_annotate_mitomap.py \
+        --mitomap $mitomap_table \
+        --input $all_tsv \
+        --output ${sample_id}_mitochondrial_variants_all_mitomap.tsv \
+        --keep-columns $params.mitomap_keep_columns
+
+    python3 ${projectDir}/bin/clam_annotate_mitomap.py \
+        --mitomap $mitomap_table \
+        --input $confidence_filtered_tsv \
+        --output ${sample_id}_mitochondrial_variants_confidence_filtered_mitomap.tsv \
+        --keep-columns $params.mitomap_keep_columns
+    """
+
+}

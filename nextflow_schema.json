@@ -107,6 +107,17 @@
       "description": "NCBI_Build value written to lightweight CLAM MAF files.",
       "hidden": true
     },
+    "mitomap_variant_table": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Optional local MITOMAP-derived variant table used to annotate CLAM TSV outputs. When unset, MITOMAP annotation is skipped."
+    },
+    "mitomap_keep_columns": {
+      "type": "integer",
+      "default": 12,
+      "description": "Maximum number of non-coordinate columns copied from the MITOMAP table into annotated TSVs.",
+      "hidden": true
+    },
     "classifier": {
       "type": "string",
       "default": "/opt/clam/share/mitoscape/MitoScapeClassify.jar",
