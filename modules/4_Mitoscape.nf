@@ -12,7 +12,7 @@ process mitoscape {
 
 	script:
 	"""
-    java -Xmx20G -jar ${params.classifier} \
+    java $params.mitoscape_java_opts -Xmx20G -jar ${params.classifier} \
 	--threads $task.cpus \
 	--prob 0.5 \
 	--ld ${params.mitomap} \

@@ -120,6 +120,9 @@ using Docker/OCI images as the source:
 | `ghcr.io/aledavini7/clam-mutect2:0.1.0` | GATK4/Mutect2 runtime. |
 
 Both images are built for `linux/amd64`.
+MitoScape is run inside `clam-core` with Java module-opening flags configured
+by `params.mitoscape_java_opts`, because its bundled Spark runtime needs access
+to Java internals that Java 17 otherwise blocks.
 
 Container build definitions live in:
 
