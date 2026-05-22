@@ -198,9 +198,11 @@ Core output categories include:
 - raw and FilterMutectCalls-filtered Mutect2 VCFs
 - mutserve VCFs
 - HaploGrep3 haplogroup reports
-- annotation TSVs under `results/annotation/<sample_id>/`, merging filtered
-  Mutect2 calls, mutserve calls, final coverage, heteroplasmy estimates, Wilson
-  confidence intervals, and confidence tiers
+- annotation TSVs under `results/<sample_id>/annotation/`: caller-specific
+  Mutect2 and mutserve tables, an all-calls consensus table, and a
+  confidence-filtered consensus table retaining `HIGH` and `MEDIUM` calls with
+  final coverage, heteroplasmy estimates, Wilson confidence intervals, and
+  confidence tiers
 
 ## Current Development Status
 
