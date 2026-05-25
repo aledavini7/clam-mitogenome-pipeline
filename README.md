@@ -199,6 +199,10 @@ Core output categories include:
   `results/<sample_id>/variants/`
 - mutserve VCFs and summaries under `results/<sample_id>/variants/`
 - HaploGrep3 haplogroup reports under `results/<sample_id>/haplogroups/`
+- first-pass QC summaries under `results/<sample_id>/qc/`
+- a self-contained HTML report under `results/<sample_id>/report/`, combining
+  coverage, BAM QC, variant caller summaries, confidence tiers, haplogroups, and
+  optional MITOMAP matches
 - annotation TSVs under `results/<sample_id>/annotation/`: caller-specific
   Mutect2 and mutserve tables, an all-calls consensus table, and a
   confidence-filtered consensus table retaining `HIGH` and `MEDIUM` calls with

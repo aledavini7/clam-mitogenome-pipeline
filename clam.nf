@@ -42,6 +42,7 @@ include { index } from './modules/6_Index.nf'
 include { mutect2; filter_mutect2; bgzip; mutserve } from './modules/7_Variant_calling.nf'
 include { haplogrep; haplogrep1 } from './modules/8_Haplogroups_assignment.nf'
 include { merge_variant_calls; annotation_mafs; mitomap_annotation } from './modules/9_annotation.nf'
+include { bam_qc; no_mitomap_report_table; build_report } from './modules/10_qc_report.nf'
 
 workflow {
 
@@ -135,6 +136,15 @@ workflow {
         final_coverage_ch = cov_ch[1]
         ind_ch = index(sort_ch[1])
 
+        sort_ch[0]
+            .combine(sort_ch[1], by: 0)
+            .map { sample_id, before_bam, after_bam -> [sample_id, 'before,after', [before_bam, after_bam]] }
+            .set { report_bam_input_ch }
+
+        cov_ch[0]
+            .combine(cov_ch[1], by: 0)
+            .set { report_coverage_ch }
+
         sort_ch[1]
             .combine(ind_ch, by: 0)
             .set { var_ch }
@@ -143,6 +153,14 @@ workflow {
         cov_ch = coverage_single(sort_single_ch)
         final_coverage_ch = cov_ch
         ind_ch = index(sort_single_ch)
+
+        sort_single_ch
+            .map { sample_id, sorted_bam -> [sample_id, 'final', [sorted_bam]] }
+            .set { report_bam_input_ch }
+
+        cov_ch
+            .map { sample_id, coverage_file -> [sample_id, coverage_file, coverage_file] }
+            .set { report_coverage_ch }
 
         sort_single_ch
             .combine(ind_ch, by: 0)
@@ -175,12 +193,33 @@ workflow {
             .set { mitomap_input_ch }
 
         mitomap_annotation_ch = mitomap_annotation(mitomap_input_ch)
+        mitomap_annotation_ch
+            .map { sample_id, mutect2_mitomap_tsv, mutserve_mitomap_tsv, all_mitomap_tsv, confidence_mitomap_tsv -> [sample_id, true, confidence_mitomap_tsv] }
+            .set { mitomap_report_ch }
+    } else {
+        mitomap_report_ch = no_mitomap_report_table(variant_summary_ch)
     }
     
     gz_ch = bgzip(filtered_mutect2_ch[0])
     
     hplg_ch = haplogrep(gz_ch)
     hplg_2_ch = haplogrep1(vcf_2_ch[0])
+
+    bam_qc_ch = bam_qc(report_bam_input_ch)
+
+    bam_qc_ch
+        .combine(report_coverage_ch, by: 0)
+        .combine(raw_mutect2_ch[0], by: 0)
+        .combine(filtered_mutect2_ch[0], by: 0)
+        .combine(vcf_2_ch[0], by: 0)
+        .combine(vcf_2_ch[1], by: 0)
+        .combine(hplg_ch, by: 0)
+        .combine(hplg_2_ch, by: 0)
+        .combine(variant_summary_ch, by: 0)
+        .combine(mitomap_report_ch, by: 0)
+        .set { report_input_ch }
+
+    report_ch = build_report(report_input_ch)
 
 
 }

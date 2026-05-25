@@ -118,6 +118,12 @@
       "description": "Maximum number of non-coordinate columns copied from the MITOMAP table into annotated TSVs.",
       "hidden": true
     },
+    "report_mt_length": {
+      "type": "integer",
+      "default": 16569,
+      "description": "Mitochondrial reference length used to compute coverage breadth in the HTML report.",
+      "hidden": true
+    },
     "classifier": {
       "type": "string",
       "default": "/opt/clam/share/mitoscape/MitoScapeClassify.jar",
