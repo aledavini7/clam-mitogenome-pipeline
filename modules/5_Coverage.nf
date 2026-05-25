@@ -2,7 +2,7 @@
 
 process sorting {
 
-    publishDir "${params.outdir}/${sample_id}", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/bams", mode: 'copy'
 
     input:
     tuple val(sample_id), path(md_bams) // output of 'get_the_MD'
@@ -22,7 +22,7 @@ process sorting {
 
 process coverage {
 
-    publishDir "${params.outdir}/${sample_id}", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/coverage", mode: 'copy'
 
     input:
     tuple val(sample_id), path(before_bams)
@@ -46,7 +46,7 @@ process coverage {
 
 process sorting_single {
 
-    publishDir "${params.outdir}/${sample_id}", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/bams", mode: 'copy'
 
     input:
     tuple val(sample_id), path(bams) // output of 'Alignment_MT'
@@ -63,7 +63,7 @@ process sorting_single {
 
 process coverage_single {
 
-    publishDir "${params.outdir}/${sample_id}", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/coverage", mode: 'copy'
 
     input:
     tuple val(sample_id), path(sorted_bams)

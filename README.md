@@ -191,13 +191,14 @@ results/<sample_id>/
 
 Core output categories include:
 
-- mitochondrial BAMs from the rCRS alignment and, when enabled, MitoScape
-  correction
-- BAM index files
-- coverage files
-- raw and FilterMutectCalls-filtered Mutect2 VCFs
-- mutserve VCFs
-- HaploGrep3 haplogroup reports
+- BAMs under `results/<sample_id>/bams/`: rCRS alignment BAMs,
+  MD-tagged BAMs, MitoScape-corrected BAMs, final coordinate-sorted BAMs, and
+  BAM index files
+- coverage files under `results/<sample_id>/coverage/`
+- raw and FilterMutectCalls-filtered Mutect2 VCFs under
+  `results/<sample_id>/variants/`
+- mutserve VCFs and summaries under `results/<sample_id>/variants/`
+- HaploGrep3 haplogroup reports under `results/<sample_id>/haplogroups/`
 - annotation TSVs under `results/<sample_id>/annotation/`: caller-specific
   Mutect2 and mutserve tables, an all-calls consensus table, and a
   confidence-filtered consensus table retaining `HIGH` and `MEDIUM` calls with

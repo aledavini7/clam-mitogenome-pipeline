@@ -2,7 +2,7 @@
 
 process haplogrep {
 
-    publishDir "${params.outdir}/${sample_id}", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/haplogroups", mode: 'copy'
 
     input:
     tuple val(sample_id), path(gz_vcfs)
@@ -19,7 +19,7 @@ process haplogrep {
 
 process haplogrep1 {
 
-    publishDir "${params.outdir}/${sample_id}", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/haplogroups", mode: 'copy'
 
     input:
     tuple val(sample_id), path(vcfs)
