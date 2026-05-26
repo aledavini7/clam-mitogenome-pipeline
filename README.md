@@ -143,6 +143,13 @@ Container build definitions live in:
 The GitHub Actions workflow in `.github/workflows/build-clam-core.yml` builds
 and publishes both container images to GHCR.
 
+## Repository Layout
+
+Active Nextflow modules live in `modules/` and are the only module files imported
+by `clam.nf`. Older exploratory CLAM modules have been moved to
+`legacy/modules/` so the current workflow stays easier to inspect while the old
+implementation remains traceable.
+
 ## Seqera Launchpad
 
 The repository includes `nextflow_schema.json` in the root directory. Seqera
@@ -243,12 +250,12 @@ Implemented in the modernized core:
 
 Still planned:
 
-- validate the annotation branch from Seqera Launchpad
+- harden input validation, sample naming, and failure messages
+- polish the HTML report with richer plots and run-level JSON summaries
 - add richer VEP/vcf2maf-style consequence annotation once the cache/resource
   strategy is finalized
-- convert remaining annotation logic into a clean downstream workflow
-- decide how WES-specific logic should be exposed
 - add test profiles with small synthetic fixtures
+- add Python and nf-test checks for merge, annotation, and reporting logic
 - add nf-core-style metadata, documentation, and CI checks
 
 ## Development Notes
