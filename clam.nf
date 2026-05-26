@@ -9,7 +9,7 @@
 nextflow.enable.dsl = 2
 
 def normalizeAnalysisMode(value) {
-    def requested = value?.toString()
+    def requested = value?.toString()?.trim()
     if (!requested) {
         return null
     }
@@ -33,6 +33,41 @@ def normalizeAnalysisMode(value) {
     return aliases[requested.toLowerCase()]
 }
 
+def sanitizeSampleId(value) {
+    def sample_id = value?.toString()?.trim()
+    if (!sample_id) {
+        return null
+    }
+
+    return sample_id
+        .replaceAll(/[^A-Za-z0-9_.-]+/, '_')
+        .replaceAll(/^_+|_+$/, '')
+}
+
+def integerParamError(name, value, minValue) {
+    try {
+        def parsed = Integer.parseInt(value?.toString())
+        if (parsed < minValue) {
+            return "--${name} must be >= ${minValue}; received '${value}'"
+        }
+        return null
+    } catch (Exception ignored) {
+        return "--${name} must be an integer; received '${value}'"
+    }
+}
+
+def numberParamError(name, value, minValue, maxValue) {
+    try {
+        def parsed = Double.parseDouble(value?.toString())
+        if (parsed < minValue || parsed > maxValue) {
+            return "--${name} must be between ${minValue} and ${maxValue}; received '${value}'"
+        }
+        return null
+    } catch (Exception ignored) {
+        return "--${name} must be numeric; received '${value}'"
+    }
+}
+
 include { sorting_1; bam2fqgz } from './modules/1_data_preparation.nf'
 include { alignment_MT; get_the_MD; get_the_MD_mitoscape } from './modules/2_MT_alignment.nf'
 include { bam2fq; alignment_Nuc } from './modules/3_NUC_alignment.nf'
@@ -46,17 +81,22 @@ include { bam_qc; no_mitomap_report_table; build_report } from './modules/10_qc_
 
 workflow {
 
-    if (!params.input) {
+    input_pattern = params.input?.toString()?.trim()
+    if (!input_pattern) {
         error "Missing required parameter: --input"
     }
 
-    input_type = params.input_type?.toString()?.toLowerCase()
+    input_type = params.input_type?.toString()?.trim()?.toLowerCase()
     if (!input_type) {
         error "Missing required parameter: --input_type. Supported values: fastq, bam"
     }
 
     if (!['fastq', 'bam'].contains(input_type)) {
         error "Unsupported --input_type '${params.input_type}'. Supported values: fastq, bam"
+    }
+
+    if (!params.outdir?.toString()?.trim()) {
+        error "Missing required parameter: --outdir"
     }
 
     analysis_mode = normalizeAnalysisMode(params.analysis_mode ?: params.genome)
@@ -79,10 +119,39 @@ workflow {
         error "Incomplete nuclear/NUMTs reference configuration for analysis mode '${analysis_mode}'"
     }
 
+    [
+        ['annotation_high_depth', params.annotation_high_depth, 1],
+        ['annotation_medium_depth', params.annotation_medium_depth, 1],
+        ['annotation_high_alt_reads', params.annotation_high_alt_reads, 1],
+        ['annotation_medium_alt_reads', params.annotation_medium_alt_reads, 1],
+        ['mitomap_keep_columns', params.mitomap_keep_columns, 0],
+        ['report_mt_length', params.report_mt_length, 1],
+    ].each { name, value, minValue ->
+        def message = integerParamError(name, value, minValue)
+        if (message) {
+            error message
+        }
+    }
+
+    def af_message = numberParamError('annotation_max_af_discordance', params.annotation_max_af_discordance, 0.0, 1.0)
+    if (af_message) {
+        error af_message
+    }
+
+    if ((params.annotation_high_depth as Integer) < (params.annotation_medium_depth as Integer)) {
+        error "--annotation_high_depth must be >= --annotation_medium_depth"
+    }
+
+    if ((params.annotation_high_alt_reads as Integer) < (params.annotation_medium_alt_reads as Integer)) {
+        error "--annotation_high_alt_reads must be >= --annotation_medium_alt_reads"
+    }
+
+    mitomap_variant_table = params.mitomap_variant_table?.toString()?.trim()
+
     log.info """\
         C L A M - N F   P I P E L I N E
         ===============================
-        input           : ${params.input}
+        input           : ${input_pattern}
         input_type      : ${input_type}
         analysis_mode   : ${analysis_mode}
         reference_set   : ${reference_set}
@@ -95,19 +164,34 @@ workflow {
         nuc_gsnap_dir   : ${params.genomedir ?: 'not used'}
         nuc_gsnap_db    : ${params.nuc_gsnap_db ?: 'not used'}
         numt_regions    : ${params.numt ?: 'not used'}
+        mitomap_table   : ${mitomap_variant_table ?: 'not used'}
         """
         .stripIndent()
 
     if (input_type == 'fastq') {
         reads_ch = Channel
-            .fromFilePairs(params.input, size: 2, checkIfExists: true)
-            .map { sample_id, reads -> [sample_id.toString(), reads] }
+            .fromFilePairs(input_pattern, size: 2, checkIfExists: true)
+            .ifEmpty { error "No FASTQ pairs matched --input '${input_pattern}'. Use a paired-end pattern such as '*_{R1,R2}.fastq.gz'." }
+            .map { sample_id, reads ->
+                def clean_id = sanitizeSampleId(sample_id)
+                if (!clean_id) {
+                    error "Could not derive a valid sample ID from FASTQ pair '${sample_id}'"
+                }
+                [clean_id, reads]
+            }
     }
 
     if (input_type == 'bam') {
         bam_ch = Channel
-            .fromPath(params.input, checkIfExists: true)
-            .map { bam -> [bam.simpleName, bam] }
+            .fromPath(input_pattern, checkIfExists: true)
+            .ifEmpty { error "No BAM files matched --input '${input_pattern}'." }
+            .map { bam ->
+                def clean_id = sanitizeSampleId(bam.simpleName)
+                if (!clean_id) {
+                    error "Could not derive a valid sample ID from BAM '${bam}'"
+                }
+                [clean_id, bam]
+            }
 
         sort_bam_ch = sorting_1(bam_ch)
         reads_ch = bam2fqgz(sort_bam_ch)
@@ -185,8 +269,8 @@ workflow {
     variant_summary_ch = merge_variant_calls(annotation_input_ch)
     variant_maf_ch = annotation_mafs(variant_summary_ch)
 
-    if (params.mitomap_variant_table) {
-        mitomap_table_ch = Channel.value(file(params.mitomap_variant_table, checkIfExists: true))
+    if (mitomap_variant_table) {
+        mitomap_table_ch = Channel.value(file(mitomap_variant_table, checkIfExists: true))
 
         variant_summary_ch
             .combine(mitomap_table_ch)

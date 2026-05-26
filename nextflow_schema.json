@@ -68,30 +68,36 @@
     "annotation_high_depth": {
       "type": "integer",
       "default": 100,
+      "minimum": 1,
       "description": "Coverage depth threshold for high-confidence heteroplasmy summaries.",
       "hidden": true
     },
     "annotation_medium_depth": {
       "type": "integer",
       "default": 30,
+      "minimum": 1,
       "description": "Coverage depth threshold for medium-confidence heteroplasmy summaries.",
       "hidden": true
     },
     "annotation_high_alt_reads": {
       "type": "integer",
       "default": 10,
+      "minimum": 1,
       "description": "Alternative-read threshold for high-confidence heteroplasmy summaries.",
       "hidden": true
     },
     "annotation_medium_alt_reads": {
       "type": "integer",
       "default": 3,
+      "minimum": 1,
       "description": "Alternative-read threshold for medium-confidence heteroplasmy summaries.",
       "hidden": true
     },
     "annotation_max_af_discordance": {
       "type": "number",
       "default": 0.1,
+      "minimum": 0,
+      "maximum": 1,
       "description": "Maximum caller allele-fraction difference allowed for high-confidence consensus calls.",
       "hidden": true
     },
@@ -115,12 +121,14 @@
     "mitomap_keep_columns": {
       "type": "integer",
       "default": 12,
+      "minimum": 0,
       "description": "Maximum number of non-coordinate columns copied from the MITOMAP table into annotated TSVs.",
       "hidden": true
     },
     "report_mt_length": {
       "type": "integer",
       "default": 16569,
+      "minimum": 1,
       "description": "Mitochondrial reference length used to compute coverage breadth in the HTML report.",
       "hidden": true
     },
