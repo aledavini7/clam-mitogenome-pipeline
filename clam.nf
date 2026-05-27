@@ -215,37 +215,44 @@ workflow {
         nuc_ch = alignment_Nuc(fq_ch)
 
         md_mitoscape_ch
-            .combine(nuc_ch, by: 0)
+            .join(nuc_ch, by: 0)
             .set { mito_ch }
 
         mito_ch
-            .combine(bams_ch, by: 0)
+            .join(bams_ch, by: 0)
             .set { final_mito_ch }
 
         mt_ch = mitoscape(final_mito_ch)
 
-        sort_ch = sorting(md_ch, mt_ch)
-        cov_ch = coverage(sort_ch)
+        md_ch
+            .join(mt_ch, by: 0)
+            .set { sorting_input_ch }
+
+        sort_ch = sorting(sorting_input_ch)
+
+        sort_ch[0]
+            .join(sort_ch[1], by: 0)
+            .set { sorted_pair_ch }
+
+        cov_ch = coverage(sorted_pair_ch)
         final_coverage_ch = cov_ch[1]
         ind_ch = index(sort_ch[1])
 
-        sort_ch[0]
-            .combine(sort_ch[1], by: 0)
+        sorted_pair_ch
             .map { sample_id, before_bam, after_bam -> [sample_id, 'before,after', [before_bam, after_bam]] }
             .set { report_bam_input_ch }
 
         cov_ch[0]
-            .combine(cov_ch[1], by: 0)
+            .join(cov_ch[1], by: 0)
             .set { report_coverage_ch }
 
         sort_ch[1]
-            .combine(ind_ch, by: 0)
+            .join(ind_ch, by: 0)
             .set { var_ch }
 
         if (run_numt_exploration) {
-            sort_ch[0]
-                .combine(sort_ch[1], by: 0)
-                .combine(nuc_ch, by: 0)
+            sorted_pair_ch
+                .join(nuc_ch, by: 0)
                 .set { numt_exploration_input_ch }
 
             numt_exploration_raw_ch = numt_like_exploration(numt_exploration_input_ch)
