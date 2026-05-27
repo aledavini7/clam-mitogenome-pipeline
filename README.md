@@ -71,6 +71,14 @@ For `--analysis_mode rcrs_only`, the pipeline intentionally skips the nuclear
 remapping and MitoScape branch. This mode is useful for mitochondrial-only
 analyses, WES-style tests, and quick checks, but it is not NUMT-corrected.
 
+CLAM can also run an optional exploratory layer with
+`--run_numt_exploration true`. This does not call novel NUMT insertions.
+Instead, it subtracts the MitoScape-retained read IDs from the pre-MitoScape
+candidate mitochondrial read set, extracts the MitoScape-rejected reads, and
+summarizes where those reads align in the nuclear remapping BAM. The resulting
+tables should be interpreted as NUMT-like or MitoScape-rejected evidence that
+may guide follow-up review, not as confirmed breakpoint-level NUMT events.
+
 ## Supported Inputs
 
 | Input type | Parameter | Expected pattern | Notes |
@@ -224,6 +232,13 @@ Core output categories include:
   `results/<sample_id>/annotation/mitomap/` when `--mitomap_variant_table` is
   provided. CLAM expects a local MITOMAP-derived TSV/CSV file and performs exact
   allele matching when possible, falling back to position-level matching.
+- optional NUMT-like exploration outputs under
+  `results/<sample_id>/numt_exploration/` when
+  `--run_numt_exploration true` is used in `wgs_numt_correction` mode. These
+  include MitoScape-rejected read IDs, extracted rejected-read BAMs, nuclear
+  alignment summaries, and window-level nuclear remapping summaries. These are
+  exploratory outputs and should not be reported as confirmed NUMT insertions
+  without independent breakpoint-level support.
 
 MITOMAP is maintained as a human mitochondrial genome database and reports
 published data on human mtDNA variation. Because MITOMAP resources and terms of
@@ -245,13 +260,15 @@ Implemented in the modernized core:
 - first-pass unified heteroplasmy summary table
 - lightweight maftools-compatible MAF generation from CLAM annotation TSVs
 - optional MITOMAP table annotation for CLAM annotation TSVs
+- optional MitoScape-rejected / NUMT-like read exploration for WGS mode
 - SLURM/Singularity-oriented configuration
 - `nextflow_schema.json` for Seqera Launchpad
 
 Still planned:
 
-- harden input validation, sample naming, and failure messages
 - polish the HTML report with richer plots and run-level JSON summaries
+- add a second, stricter NUMT candidate layer based on discordant/split-read
+  breakpoint clustering once validation criteria are finalized
 - add richer VEP/vcf2maf-style consequence annotation once the cache/resource
   strategy is finalized
 - add test profiles with small synthetic fixtures

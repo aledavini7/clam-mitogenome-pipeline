@@ -77,7 +77,8 @@ include { index } from './modules/6_Index.nf'
 include { mutect2; filter_mutect2; bgzip; mutserve } from './modules/7_Variant_calling.nf'
 include { haplogrep; haplogrep1 } from './modules/8_Haplogroups_assignment.nf'
 include { merge_variant_calls; annotation_mafs; mitomap_annotation } from './modules/9_annotation.nf'
-include { bam_qc; no_mitomap_report_table; build_report } from './modules/10_qc_report.nf'
+include { bam_qc; no_mitomap_report_table; no_numt_exploration_report_table; build_report } from './modules/10_qc_report.nf'
+include { numt_like_exploration } from './modules/11_numt_exploration.nf'
 
 workflow {
 
@@ -109,7 +110,12 @@ workflow {
     }
 
     run_numt_correction = params.run_numt_correction != null && params.run_numt_correction.toString().toBoolean()
+    run_numt_exploration = params.run_numt_exploration != null && params.run_numt_exploration.toString().toBoolean()
     reference_set = params.reference_set ?: (run_numt_correction ? 'GRCh38+rCRS' : 'rCRS')
+
+    if (run_numt_exploration && !run_numt_correction) {
+        error "--run_numt_exploration is only available with --analysis_mode wgs_numt_correction"
+    }
 
     if (!params.datadir || !params.mt_gsnap_db || !params.fasta || !params.mutserve_fasta || !params.mt_contig) {
         error "Incomplete mitochondrial reference configuration for analysis mode '${analysis_mode}'"
@@ -126,6 +132,8 @@ workflow {
         ['annotation_medium_alt_reads', params.annotation_medium_alt_reads, 1],
         ['mitomap_keep_columns', params.mitomap_keep_columns, 0],
         ['report_mt_length', params.report_mt_length, 1],
+        ['numt_exploration_min_mapq', params.numt_exploration_min_mapq, 0],
+        ['numt_exploration_cluster_window', params.numt_exploration_cluster_window, 1],
     ].each { name, value, minValue ->
         def message = integerParamError(name, value, minValue)
         if (message) {
@@ -164,6 +172,7 @@ workflow {
         nuc_gsnap_dir   : ${params.genomedir ?: 'not used'}
         nuc_gsnap_db    : ${params.nuc_gsnap_db ?: 'not used'}
         numt_regions    : ${params.numt ?: 'not used'}
+        numt_explore    : ${run_numt_exploration}
         mitomap_table   : ${mitomap_variant_table ?: 'not used'}
         """
         .stripIndent()
@@ -232,6 +241,15 @@ workflow {
         sort_ch[1]
             .combine(ind_ch, by: 0)
             .set { var_ch }
+
+        if (run_numt_exploration) {
+            sort_ch[0]
+                .combine(sort_ch[1], by: 0)
+                .combine(nuc_ch, by: 0)
+                .set { numt_exploration_input_ch }
+
+            numt_exploration_raw_ch = numt_like_exploration(numt_exploration_input_ch)
+        }
     } else {
         sort_single_ch = sorting_single(md_ch)
         cov_ch = coverage_single(sort_single_ch)
@@ -283,6 +301,16 @@ workflow {
     } else {
         mitomap_report_ch = no_mitomap_report_table(variant_summary_ch)
     }
+
+    if (run_numt_exploration) {
+        numt_exploration_raw_ch
+            .map { sample_id, rejected_ids, rejected_mt_bam, rejected_mt_bai, rejected_nuclear_bam, rejected_nuclear_bai, summary_tsv, alignments_tsv, contig_tsv, window_tsv ->
+                [sample_id, true, summary_tsv, contig_tsv, window_tsv]
+            }
+            .set { numt_report_ch }
+    } else {
+        numt_report_ch = no_numt_exploration_report_table(variant_summary_ch)
+    }
     
     gz_ch = bgzip(filtered_mutect2_ch[0])
     
@@ -301,6 +329,7 @@ workflow {
         .combine(hplg_2_ch, by: 0)
         .combine(variant_summary_ch, by: 0)
         .combine(mitomap_report_ch, by: 0)
+        .combine(numt_report_ch, by: 0)
         .set { report_input_ch }
 
     report_ch = build_report(report_input_ch)

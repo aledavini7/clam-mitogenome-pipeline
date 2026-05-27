@@ -125,6 +125,25 @@
       "description": "Maximum number of non-coordinate columns copied from the MITOMAP table into annotated TSVs.",
       "hidden": true
     },
+    "run_numt_exploration": {
+      "type": "boolean",
+      "default": false,
+      "description": "Optional WGS-only exploratory analysis of MitoScape-rejected reads. Outputs are NUMT-like read summaries, not confirmed NUMT insertion calls."
+    },
+    "numt_exploration_min_mapq": {
+      "type": "integer",
+      "default": 20,
+      "minimum": 0,
+      "description": "Minimum nuclear remapping MAPQ used to count high-confidence NUMT-like alignments in the exploratory NUMT report.",
+      "hidden": true
+    },
+    "numt_exploration_cluster_window": {
+      "type": "integer",
+      "default": 500,
+      "minimum": 1,
+      "description": "Window size in bp used to summarize nuclear loci for MitoScape-rejected reads.",
+      "hidden": true
+    },
     "report_mt_length": {
       "type": "integer",
       "default": 16569,

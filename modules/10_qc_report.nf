@@ -54,6 +54,31 @@ process no_mitomap_report_table {
 
 }
 
+process no_numt_exploration_report_table {
+
+    input:
+    tuple val(sample_id),
+        path(mutect2_tsv),
+        path(mutserve_tsv),
+        path(all_tsv),
+        path(confidence_filtered_tsv)
+
+    output:
+    tuple val(sample_id),
+        val(false),
+        path("${sample_id}_numt_exploration_not_requested.tsv"),
+        path("${sample_id}_numt_exploration_contigs_not_requested.tsv"),
+        path("${sample_id}_numt_exploration_windows_not_requested.tsv")
+
+    script:
+    """
+    printf "sample_id\\tpre_mitoscape_unique_read_ids\\tpost_mitoscape_unique_read_ids\\tretained_read_ids\\tmitoscape_rejected_read_ids\\tmitoscape_rejected_fraction_pct\\trejected_mt_alignments\\trejected_nuclear_alignments\\trejected_nuclear_primary_alignments\\trejected_nuclear_proper_pair_alignments\\trejected_nuclear_high_mapq_alignments\\tmin_mapq_threshold\\tcluster_window_bp\\tinterpretation\\n" > ${sample_id}_numt_exploration_not_requested.tsv
+    printf "sample_id\\tnuclear_contig\\talignments\\thigh_mapq_alignments\\tmin_pos\\tmax_pos\\tmean_mapq\\n" > ${sample_id}_numt_exploration_contigs_not_requested.tsv
+    printf "sample_id\\tnuclear_contig\\twindow_start\\twindow_end\\talignments\\tunique_read_ids\\thigh_mapq_alignments\\tmean_mapq\\n" > ${sample_id}_numt_exploration_windows_not_requested.tsv
+    """
+
+}
+
 process build_report {
 
     publishDir "${params.outdir}/${sample_id}/report", mode: 'copy'
@@ -74,7 +99,11 @@ process build_report {
         path(all_tsv),
         path(confidence_filtered_tsv),
         val(has_mitomap),
-        path(mitomap_confidence_tsv)
+        path(mitomap_confidence_tsv),
+        val(has_numt_exploration),
+        path(numt_summary_tsv),
+        path(numt_contig_tsv),
+        path(numt_window_tsv)
 
     output:
     tuple val(sample_id),
@@ -106,6 +135,10 @@ process build_report {
         --confidence-filtered-tsv "$confidence_filtered_tsv" \\
         --has-mitomap "$has_mitomap" \\
         --mitomap-confidence-tsv "$mitomap_confidence_tsv" \\
+        --has-numt-exploration "$has_numt_exploration" \\
+        --numt-summary-tsv "$numt_summary_tsv" \\
+        --numt-contig-tsv "$numt_contig_tsv" \\
+        --numt-window-tsv "$numt_window_tsv" \\
         --output-html "${sample_id}_CLAM_report.html" \\
         --output-qc "${sample_id}_CLAM_qc_summary.tsv"
     """

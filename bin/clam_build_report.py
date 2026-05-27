@@ -165,6 +165,39 @@ def summarize_mitomap(rows, enabled):
     }
 
 
+def summarize_numt_exploration(summary_rows, contig_rows, window_rows, enabled):
+    if not enabled:
+        return {
+            "enabled": False,
+            "summary": {},
+            "contigs": [],
+            "windows": [],
+        }
+
+    summary = summary_rows[0] if summary_rows else {}
+
+    contigs = sorted(
+        contig_rows,
+        key=lambda row: as_int(row.get("alignments")) or 0,
+        reverse=True,
+    )
+    windows = sorted(
+        window_rows,
+        key=lambda row: (
+            as_int(row.get("unique_read_ids")) or 0,
+            as_int(row.get("alignments")) or 0,
+        ),
+        reverse=True,
+    )
+
+    return {
+        "enabled": True,
+        "summary": summary,
+        "contigs": contigs,
+        "windows": windows,
+    }
+
+
 def summarize_bam_qc(rows):
     by_stage = {}
     for row in rows:
@@ -253,6 +286,39 @@ def top_variant_rows(rows, limit=25):
     return table_rows
 
 
+def top_numt_contig_rows(rows, limit=10):
+    table_rows = []
+    for row in rows[:limit]:
+        table_rows.append(
+            [
+                row.get("nuclear_contig", ""),
+                row.get("alignments", ""),
+                row.get("high_mapq_alignments", ""),
+                row.get("min_pos", ""),
+                row.get("max_pos", ""),
+                row.get("mean_mapq", ""),
+            ]
+        )
+    return table_rows
+
+
+def top_numt_window_rows(rows, limit=10):
+    table_rows = []
+    for row in rows[:limit]:
+        table_rows.append(
+            [
+                row.get("nuclear_contig", ""),
+                row.get("window_start", ""),
+                row.get("window_end", ""),
+                row.get("alignments", ""),
+                row.get("unique_read_ids", ""),
+                row.get("high_mapq_alignments", ""),
+                row.get("mean_mapq", ""),
+            ]
+        )
+    return table_rows
+
+
 def heteroplasmy_bins(values):
     bins = [
         ("0-1%", 0, 1),
@@ -286,6 +352,7 @@ def build_html(args, data):
     mutserve_haplo = data["mutserve_haplo"]
     mitomap = data["mitomap"]
     bam_qc = data["bam_qc"]
+    numt_exploration = data["numt_exploration"]
     analysis_mode_label = pretty_analysis_mode(args.analysis_mode)
 
     high = filtered["confidence"].get("HIGH", 0)
@@ -316,6 +383,16 @@ def build_html(args, data):
 
     if final_bam:
         cards.append(metric_card("Final BAM Alignments", final_bam.get("total", "NA"), f"Mapped {final_bam.get('mapped', 'NA')}"))
+
+    if numt_exploration["enabled"]:
+        numt_summary = numt_exploration["summary"]
+        cards.append(
+            metric_card(
+                "NUMT-like Reads",
+                numt_summary.get("mitoscape_rejected_read_ids", "NA"),
+                f"{numt_summary.get('mitoscape_rejected_fraction_pct', 'NA')}% of pre-MitoScape read IDs",
+            )
+        )
 
     confidence_max = max([1] + list(all_calls["confidence"].values()))
     confidence_bars = "".join(
@@ -369,6 +446,15 @@ def build_html(args, data):
         warnings.append(f"Final mtDNA breadth >=30x is {pct(final_cov['breadth_30x'], 1)}; inspect low-coverage intervals.")
     if mutect2_haplo["haplogroup"] != "NA" and mutserve_haplo["haplogroup"] != "NA" and mutect2_haplo["haplogroup"] != mutserve_haplo["haplogroup"]:
         warnings.append("Mutect2 and mutserve HaploGrep assignments differ; review caller-specific VCFs and coverage.")
+    if numt_exploration["enabled"]:
+        high_mapq = as_int(numt_exploration["summary"].get("rejected_nuclear_high_mapq_alignments")) or 0
+        warnings.append(
+            "NUMT-like exploration is exploratory: MitoScape-rejected reads are not confirmed NUMT insertions without breakpoint-level support, clustering, and orthogonal validation."
+        )
+        if high_mapq > 0:
+            warnings.append(
+                f"{high_mapq} MitoScape-rejected nuclear alignments meet the configured high-MAPQ threshold; review the NUMT exploration tables before interpretation."
+            )
     if not warnings:
         warnings.append("No automatic QC warnings were triggered by the first-pass CLAM report rules.")
 
@@ -379,9 +465,34 @@ def build_html(args, data):
         ["Annotation TSVs", "../annotation/"],
         ["MAFs", "../annotation/mafs/"],
         ["MITOMAP TSVs", "../annotation/mitomap/" if mitomap["enabled"] else "not requested"],
+        ["NUMT-like exploration", "../numt_exploration/" if numt_exploration["enabled"] else "not requested"],
         ["Haplogroups", "../haplogroups/"],
         ["QC TSVs", "../qc/"],
     ]
+
+    numt_section = ""
+    if numt_exploration["enabled"]:
+        numt_summary = numt_exploration["summary"]
+        numt_summary_rows = [
+            ["Pre-MitoScape unique read IDs", numt_summary.get("pre_mitoscape_unique_read_ids", "NA")],
+            ["Post-MitoScape unique read IDs", numt_summary.get("post_mitoscape_unique_read_ids", "NA")],
+            ["MitoScape-rejected read IDs", numt_summary.get("mitoscape_rejected_read_ids", "NA")],
+            ["Rejected fraction (%)", numt_summary.get("mitoscape_rejected_fraction_pct", "NA")],
+            ["Rejected nuclear alignments", numt_summary.get("rejected_nuclear_alignments", "NA")],
+            ["High-MAPQ nuclear alignments", numt_summary.get("rejected_nuclear_high_mapq_alignments", "NA")],
+            ["Interpretation label", numt_summary.get("interpretation", "NA")],
+        ]
+        numt_section = f"""
+    <section class="panel">
+      <h2>NUMT-like Read Exploration</h2>
+      <div class="notice">This section describes MitoScape-rejected reads and their nuclear remapping pattern. It is an exploratory signal, not a confirmed NUMT insertion call.</div>
+      {simple_table(["Metric", "Value"], numt_summary_rows)}
+      <h2>Top Nuclear Contigs</h2>
+      {simple_table(["Contig", "Alignments", "High-MAPQ", "Min pos", "Max pos", "Mean MAPQ"], top_numt_contig_rows(numt_exploration["contigs"]))}
+      <h2>Top Nuclear Windows</h2>
+      {simple_table(["Contig", "Window start", "Window end", "Alignments", "Unique read IDs", "High-MAPQ", "Mean MAPQ"], top_numt_window_rows(numt_exploration["windows"]))}
+    </section>
+        """
 
     return f"""<!doctype html>
 <html lang="en">
@@ -578,6 +689,8 @@ def build_html(args, data):
       {simple_table(["Position", "Ref", "Alt", "Callers", "Confidence", "Coverage", "Alt reads", "Heteroplasmy %", "MITOMAP", "MITOMAP type", "Reason"], top_variant_rows(data["top_rows"]))}
     </section>
 
+    {numt_section}
+
     <section class="panel links">
       <h2>Output Index</h2>
       {simple_table(["Category", "Relative path"], output_links)}
@@ -612,6 +725,10 @@ def main():
     parser.add_argument("--confidence-filtered-tsv", required=True)
     parser.add_argument("--has-mitomap", required=True)
     parser.add_argument("--mitomap-confidence-tsv", required=True)
+    parser.add_argument("--has-numt-exploration", required=True)
+    parser.add_argument("--numt-summary-tsv", required=True)
+    parser.add_argument("--numt-contig-tsv", required=True)
+    parser.add_argument("--numt-window-tsv", required=True)
     parser.add_argument("--output-html", required=True)
     parser.add_argument("--output-qc", required=True)
     args = parser.parse_args()
@@ -621,6 +738,10 @@ def main():
     mitomap_enabled = as_bool(args.has_mitomap)
     mitomap_rows = read_tsv(args.mitomap_confidence_tsv) if mitomap_enabled else []
     top_rows = mitomap_rows if mitomap_enabled else filtered_rows
+    numt_exploration_enabled = as_bool(args.has_numt_exploration)
+    numt_summary_rows = read_tsv(args.numt_summary_tsv) if numt_exploration_enabled else []
+    numt_contig_rows = read_tsv(args.numt_contig_tsv) if numt_exploration_enabled else []
+    numt_window_rows = read_tsv(args.numt_window_tsv) if numt_exploration_enabled else []
 
     data = {
         "bam_qc": summarize_bam_qc(read_tsv(args.bam_qc)),
@@ -634,6 +755,12 @@ def main():
         "all": summarize_variants(all_rows),
         "filtered": summarize_variants(filtered_rows),
         "mitomap": summarize_mitomap(mitomap_rows, mitomap_enabled),
+        "numt_exploration": summarize_numt_exploration(
+            numt_summary_rows,
+            numt_contig_rows,
+            numt_window_rows,
+            numt_exploration_enabled,
+        ),
         "mutect2_haplo": parse_haplogroup(args.mutect2_haplogroups),
         "mutserve_haplo": parse_haplogroup(args.mutserve_haplogroups),
         "top_rows": top_rows,
@@ -658,6 +785,10 @@ def main():
         "mitomap_enabled": mitomap_enabled,
         "mitomap_exact_matches": data["mitomap"]["type"].get("exact", 0),
         "mitomap_position_matches": data["mitomap"]["type"].get("position", 0),
+        "numt_exploration_enabled": numt_exploration_enabled,
+        "numt_like_rejected_read_ids": data["numt_exploration"]["summary"].get("mitoscape_rejected_read_ids", "NA"),
+        "numt_like_rejected_fraction_pct": data["numt_exploration"]["summary"].get("mitoscape_rejected_fraction_pct", "NA"),
+        "numt_like_high_mapq_nuclear_alignments": data["numt_exploration"]["summary"].get("rejected_nuclear_high_mapq_alignments", "NA"),
         "mutect2_haplogroup": data["mutect2_haplo"]["haplogroup"],
         "mutserve_haplogroup": data["mutserve_haplo"]["haplogroup"],
     }
