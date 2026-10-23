@@ -126,6 +126,8 @@ def normalizeFastqPairs(files, sample) {
 workflow {
 
     fastq_input_pattern = params.input?.toString()?.trim()
+    // Seqera may preserve shell-style escapes around glob characters in the text field.
+    fastq_input_pattern = fastq_input_pattern?.replace('\\*', '*')?.replace('\\?', '?')
     if (!fastq_input_pattern) {
         error "Missing required parameter: --input"
     }

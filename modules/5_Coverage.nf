@@ -91,7 +91,8 @@ process coverage_single {
     tuple val(sample_id), path(sorted_bams)
 
     output:
-    tuple val(sample_id), path("${sample_id}_before.coverage"), path("${sample_id}_after.coverage")
+    tuple val(sample_id), path("${sample_id}_before.coverage")
+    tuple val(sample_id), path("${sample_id}_after.coverage")
    
 
     script:
