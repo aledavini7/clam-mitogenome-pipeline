@@ -99,9 +99,9 @@ process merge_fastq_lanes {
 }
 
 def fastqLaneKey(file) {
-    def matcher = file.name =~ /^(.*)_L(\\d{3})_(R[12])_(\\d{3})\\.fastq\\.gz$/
+    def matcher = file.name =~ /^(.*)_L(\d{3})_(R[12])_(\d{3})\.fastq\.gz$/
     if (matcher.matches()) return [sample: matcher[0][1], lane: matcher[0][2], mate: matcher[0][3]]
-    matcher = file.name =~ /^(.*)_(R[12])\\.fastq\\.gz$/
+    matcher = file.name =~ /^(.*)_(R[12])\.fastq\.gz$/
     if (matcher.matches()) return [sample: matcher[0][1], lane: '000', mate: matcher[0][2]]
     return null
 }
