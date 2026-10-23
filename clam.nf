@@ -15,6 +15,8 @@ def normalizeAnalysisMode(value) {
     }
 
     def aliases = [
+        'with_numt_correction'    : 'wgs_numt_correction',
+        'without_numt_correction' : 'rcrs_only',
         'wgs_numt_correction': 'wgs_numt_correction',
         'wgs-numt-correction': 'wgs_numt_correction',
         'wgs'                : 'wgs_numt_correction',
