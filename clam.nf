@@ -106,10 +106,25 @@ def fastqLaneKey(file) {
     return null
 }
 
+def normalizeFastqPairs(files, sample) {
+    def lanes = [:].withDefault { [:].withDefault { [] } }
+    files.each { file ->
+        def key = fastqLaneKey(file)
+        if (key && key.sample == sample) lanes[key.lane][key.mate] << file
+    }
+    def sorted = lanes.keySet().sort()
+    def lane_names = sorted.collect { lane ->
+        if (lanes[lane].R1.size() != 1 || lanes[lane].R2.size() != 1)
+            error "Sample '${sample}' lane '${lane}' must have exactly one R1 and one R2 FASTQ."
+        [r1: lanes[lane].R1[0].name, r2: lanes[lane].R2[0].name]
+    }
+    tuple(lane_names, lanes.values().collectMany { it.values().flatten() })
+}
+
 workflow {
 
-    input_pattern = params.input?.toString()?.trim()
-    if (!input_pattern) {
+    fastq_input_pattern = params.input?.toString()?.trim()
+    if (!fastq_input_pattern) {
         error "Missing required parameter: --input"
     }
 
@@ -185,7 +200,7 @@ workflow {
     log.info """\
         C L A M - N F   P I P E L I N E
         ===============================
-        input           : ${input_pattern}
+        input           : ${fastq_input_pattern}
         input_type      : ${input_type}
         analysis_mode   : ${analysis_mode}
         reference_set   : ${reference_set}
@@ -204,37 +219,29 @@ workflow {
         .stripIndent()
 
     if (input_type == 'fastq') {
-        def fastq_files = Channel.fromPath(input_pattern, checkIfExists: true).collect().get()
-        if (!fastq_files) error "No FASTQ files matched --input '${input_pattern}'."
-        def grouped = [:].withDefault { [:].withDefault { [] } }
-        fastq_files.each { file ->
-            def key = fastqLaneKey(file)
-            if (key) grouped[key.sample][key.lane] << [mate: key.mate, file: file]
-        }
-        def prepared = []
-        grouped.each { raw_sample, lane_map ->
-            def clean_id = sanitizeSampleId(raw_sample)
-            if (!clean_id) error "Could not derive a valid sample ID from FASTQ files '${raw_sample}'"
-            def lanes = []
-            lane_map.keySet().sort().each { lane ->
-                def entries = lane_map[lane]
-                def r1 = entries.findAll { it.mate == 'R1' }
-                def r2 = entries.findAll { it.mate == 'R2' }
-                if (r1.size() != 1 || r2.size() != 1) error "Sample '${raw_sample}' lane '${lane}' must have exactly one R1 and one R2 FASTQ."
-                lanes << [r1: r1[0].file.name, r2: r2[0].file.name]
+        fastq_file_ch = Channel.fromPath(fastq_input_pattern, checkIfExists: true).collect()
+        fastq_groups_ch = fastq_file_ch.flatMap { files ->
+            def groups = [:].withDefault { [] }
+            files.each { file ->
+                def lane_key = fastqLaneKey(file)
+                if (lane_key) groups[lane_key.sample] << file
             }
-            def lane_files = lane_map.values().flatten().collect { it.file }
-            prepared << tuple(clean_id, lanes, lane_files)
+            groups.collect { sample, sample_files ->
+                def clean_id = sanitizeSampleId(sample)
+                if (!clean_id) error "Could not derive a valid sample ID from FASTQ files '${sample}'"
+                def pair_data = normalizeFastqPairs(sample_files, sample)
+                tuple(clean_id, pair_data[0], pair_data[1])
+            }
         }
-        if (!prepared) error "No paired-end R1/R2 FASTQ files matched --input '${input_pattern}'."
-        reads_ch = merge_fastq_lanes(Channel.fromList(prepared))
+        reads_ch = merge_fastq_lanes(fastq_groups_ch)
             .map { sample_id, r1, r2 -> [sample_id, [r1, r2]] }
+            .ifEmpty { error "No paired-end R1/R2 FASTQ files matched --input '${fastq_input_pattern}'." }
     }
 
     if (input_type == 'bam') {
         bam_ch = Channel
-            .fromPath(input_pattern, checkIfExists: true)
-            .ifEmpty { error "No BAM files matched --input '${input_pattern}'." }
+            .fromPath(fastq_input_pattern, checkIfExists: true)
+            .ifEmpty { error "No BAM files matched --input '${fastq_input_pattern}'." }
             .map { bam ->
                 def clean_id = sanitizeSampleId(bam.simpleName)
                 if (!clean_id) {
