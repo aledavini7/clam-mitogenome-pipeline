@@ -80,6 +80,32 @@ include { merge_variant_calls; annotation_mafs; mitomap_annotation } from './mod
 include { bam_qc; no_mitomap_report_table; no_numt_exploration_report_table; build_report } from './modules/10_qc_report.nf'
 include { numt_like_exploration } from './modules/11_numt_exploration.nf'
 
+process merge_fastq_lanes {
+    tag "$sample_id"
+
+    input:
+    tuple val(sample_id), val(lanes), path(reads)
+
+    output:
+    tuple val(sample_id), path("${sample_id}_R1.fastq.gz"), path("${sample_id}_R2.fastq.gz")
+
+    script:
+    def r1 = lanes.collect { lane -> reads.find { it.name == lane.r1 } }
+    def r2 = lanes.collect { lane -> reads.find { it.name == lane.r2 } }
+    """
+    cat ${r1.join(' ')} > ${sample_id}_R1.fastq.gz
+    cat ${r2.join(' ')} > ${sample_id}_R2.fastq.gz
+    """
+}
+
+def fastqLaneKey(file) {
+    def matcher = file.name =~ /^(.*)_L(\\d{3})_(R[12])_(\\d{3})\\.fastq\\.gz$/
+    if (matcher.matches()) return [sample: matcher[0][1], lane: matcher[0][2], mate: matcher[0][3]]
+    matcher = file.name =~ /^(.*)_(R[12])\\.fastq\\.gz$/
+    if (matcher.matches()) return [sample: matcher[0][1], lane: '000', mate: matcher[0][2]]
+    return null
+}
+
 workflow {
 
     input_pattern = params.input?.toString()?.trim()
@@ -178,16 +204,31 @@ workflow {
         .stripIndent()
 
     if (input_type == 'fastq') {
-        reads_ch = Channel
-            .fromFilePairs(input_pattern, size: 2, checkIfExists: true)
-            .ifEmpty { error "No FASTQ pairs matched --input '${input_pattern}'. Use a paired-end pattern such as '*_{R1,R2}.fastq.gz'." }
-            .map { sample_id, reads ->
-                def clean_id = sanitizeSampleId(sample_id)
-                if (!clean_id) {
-                    error "Could not derive a valid sample ID from FASTQ pair '${sample_id}'"
-                }
-                [clean_id, reads]
+        def fastq_files = Channel.fromPath(input_pattern, checkIfExists: true).collect().get()
+        if (!fastq_files) error "No FASTQ files matched --input '${input_pattern}'."
+        def grouped = [:].withDefault { [:].withDefault { [] } }
+        fastq_files.each { file ->
+            def key = fastqLaneKey(file)
+            if (key) grouped[key.sample][key.lane] << [mate: key.mate, file: file]
+        }
+        def prepared = []
+        grouped.each { raw_sample, lane_map ->
+            def clean_id = sanitizeSampleId(raw_sample)
+            if (!clean_id) error "Could not derive a valid sample ID from FASTQ files '${raw_sample}'"
+            def lanes = []
+            lane_map.keySet().sort().each { lane ->
+                def entries = lane_map[lane]
+                def r1 = entries.findAll { it.mate == 'R1' }
+                def r2 = entries.findAll { it.mate == 'R2' }
+                if (r1.size() != 1 || r2.size() != 1) error "Sample '${raw_sample}' lane '${lane}' must have exactly one R1 and one R2 FASTQ."
+                lanes << [r1: r1[0].file.name, r2: r2[0].file.name]
             }
+            def lane_files = lane_map.values().flatten().collect { it.file }
+            prepared << tuple(clean_id, lanes, lane_files)
+        }
+        if (!prepared) error "No paired-end R1/R2 FASTQ files matched --input '${input_pattern}'."
+        reads_ch = merge_fastq_lanes(Channel.fromList(prepared))
+            .map { sample_id, r1, r2 -> [sample_id, [r1, r2]] }
     }
 
     if (input_type == 'bam') {

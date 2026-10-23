@@ -83,14 +83,14 @@ may guide follow-up review, not as confirmed breakpoint-level NUMT events.
 
 | Input type | Parameter | Expected pattern | Notes |
 | --- | --- | --- | --- |
-| FASTQ pairs | `--input_type fastq` | `data/*_{R1,R2}.fastq.gz` | Paired-end FASTQ files are grouped with `Channel.fromFilePairs`. |
+| FASTQ pairs | `--input_type fastq` | `data/*.fastq.gz` | Accepts one R1/R2 pair per sample or lane-named files such as `*_L001_R1_001.fastq.gz`; lane files are concatenated by mate in lane order. |
 | BAM | `--input_type bam` | `data/*.bam` | BAMs are sorted, converted to FASTQ, and remapped inside CLAM. |
 
 Example runs:
 
 ```bash
 nextflow run clam.nf \
-  --input 'data/*_{R1,R2}.fastq.gz' \
+  --input 'data/*.fastq.gz' \
   --input_type fastq \
   --analysis_mode wgs_numt_correction
 ```
