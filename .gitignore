@@ -8,3 +8,5 @@ work/**
 bozza.nf
 old_files/**
 vm_results/**
+results_optimal_test/**
+scripts/**

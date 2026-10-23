@@ -22,16 +22,16 @@
     },
     "analysis_mode": {
       "type": "string",
-      "description": "CLAM analysis mode. Use wgs_numt_correction for the full WGS workflow with GRCh38 nuclear remapping and MitoScape NUMT correction, or rcrs_only for the short mitochondrial-only workflow.",
+      "description": "Choose whether to run with or without the nuclear-remapping and MitoScape NUMT-correction branch.",
       "enum": [
-        "wgs_numt_correction",
-        "rcrs_only"
+        "with_NUMT_correction",
+        "without_NUMT_correction"
       ],
       "default": "wgs_numt_correction"
     },
     "genome": {
       "type": "string",
-      "description": "Legacy parameter. Prefer analysis_mode. Accepted legacy aliases include GRCh38/hg38 for wgs_numt_correction and rCRS for rcrs_only.",
+      "description": "Legacy parameter. Prefer analysis_mode.",
       "hidden": true
     },
     "outdir": {

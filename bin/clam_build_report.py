@@ -55,8 +55,8 @@ def short_text(value, limit=100):
 
 def pretty_analysis_mode(value):
     labels = {
-        "wgs_numt_correction": "WGS + NUMT",
-        "rcrs_only": "rCRS only",
+        "wgs_numt_correction": "with_NUMT_correction",
+        "rcrs_only": "without_NUMT_correction",
     }
     return labels.get(value, value)
 
@@ -259,13 +259,7 @@ def simple_table(headers, rows, css_class="compact-table"):
 
 
 def top_variant_rows(rows, limit=25):
-    def sort_key(row):
-        confidence = row.get("confidence_tier", "")
-        het = as_float(row.get("consensus_heteroplasmy_pct_0_100")) or 0
-        depth = as_float(row.get("coverage_depth")) or 0
-        return (CONFIDENCE_ORDER.get(confidence, 3), -het, -depth)
-
-    selected = sorted(rows, key=sort_key)[:limit]
+    selected = sorted(rows, key=lambda row: (as_int(row.get("position")) or 0, row.get("ref", ""), row.get("alt", "")))[:limit]
     table_rows = []
     for row in selected:
         table_rows.append(
@@ -276,7 +270,12 @@ def top_variant_rows(rows, limit=25):
                 row.get("callers", ""),
                 row.get("confidence_tier", ""),
                 row.get("coverage_depth", ""),
-                row.get("consensus_alt_depth", ""),
+                row.get("mutect2_depth", ""),
+                row.get("mutect2_alt_depth", ""),
+                row.get("mutect2_heteroplasmy_pct_0_100", ""),
+                row.get("mutserve_depth", ""),
+                row.get("mutserve_alt_depth", ""),
+                row.get("mutserve_heteroplasmy_pct_0_100", ""),
                 row.get("consensus_heteroplasmy_pct_0_100", ""),
                 row.get("mitomap_match", ""),
                 row.get("mitomap_match_type", ""),
@@ -686,7 +685,7 @@ def build_html(args, data):
 
     <section class="panel">
       <h2>Top Filtered Variants</h2>
-      {simple_table(["Position", "Ref", "Alt", "Callers", "Confidence", "Coverage", "Alt reads", "Heteroplasmy %", "MITOMAP", "MITOMAP type", "Reason"], top_variant_rows(data["top_rows"]))}
+      {simple_table(["Position", "Ref", "Alt", "Callers", "Confidence", "BAM coverage", "Mutect2 depth", "Mutect2 ALT", "Mutect2 het %", "mutserve depth", "mutserve ALT", "mutserve het %", "Mean caller het %", "MITOMAP", "MITOMAP type", "Reason"], top_variant_rows(data["top_rows"]))}
     </section>
 
     {numt_section}

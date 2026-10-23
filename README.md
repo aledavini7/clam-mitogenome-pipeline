@@ -22,11 +22,11 @@ flowchart TD
     B2 --> C
     C --> D[Add MD tags with samtools calmd]
     D --> E{Analysis mode}
-    E -->|wgs_numt_correction| F[Convert candidate MT BAM to FASTQ]
+    E -->|with_NUMT_correction| F[Convert candidate MT BAM to FASTQ]
     F --> G[Re-align candidate reads to nuclear-only genome]
     G --> H[MitoScape classification]
     H --> I[Final NUMT-corrected MT BAM]
-    E -->|rcrs_only| J[Use rCRS MT BAM directly]
+    E -->|without_NUMT_correction| J[Use rCRS MT BAM directly]
     I --> K[Sort, index, coverage]
     J --> K
     K --> L[Mutect2 mitochondrial calling]
@@ -59,7 +59,7 @@ MitoScape's MD parser without exposing that representation to variant callers.
 ## NUMT-Aware Strategy
 
 Nuclear mitochondrial DNA segments, or NUMTs, can mimic mitochondrial signal in
-WGS data. In `wgs_numt_correction` mode, CLAM uses the classic MitoScape logic:
+WGS data. In `with_NUMT_correction` mode, CLAM uses the classic MitoScape logic:
 
 1. Align reads to the mitochondrial reference.
 2. Extract candidate mitochondrial reads.
@@ -67,7 +67,7 @@ WGS data. In `wgs_numt_correction` mode, CLAM uses the classic MitoScape logic:
 4. Use MitoScape, known NUMT regions, linkage disequilibrium data, and the
    bundled classifier model to retain likely true mitochondrial reads.
 
-For `--analysis_mode rcrs_only`, the pipeline intentionally skips the nuclear
+For `--analysis_mode without_NUMT_correction`, the pipeline intentionally skips the nuclear
 remapping and MitoScape branch. This mode is useful for mitochondrial-only
 analyses, WES-style tests, and quick checks, but it is not NUMT-corrected.
 
@@ -106,8 +106,8 @@ nextflow run clam.nf \
 
 | Mode | NUMT correction | Internal references | Intended use |
 | --- | --- | --- | --- |
-| `wgs_numt_correction` | Yes | rCRS plus GRCh38 nuclear-only remapping | Full WGS mode with MitoScape NUMT correction. |
-| `rcrs_only` | No | rCRS only | Short mitochondrial-only mode with no nuclear remapping. |
+| `with_NUMT_correction` | Yes | rCRS plus GRCh38 nuclear-only remapping | Runs nuclear remapping and MitoScape filtering. |
+| `without_NUMT_correction` | No | rCRS only | Skips nuclear remapping and MitoScape filtering. |
 
 Large nuclear reference genomes and nuclear-only GSNAP indexes are not bundled
 in the containers. The small rCRS GSNAP index is bundled in `clam-core` to avoid
