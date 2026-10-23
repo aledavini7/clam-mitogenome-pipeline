@@ -310,15 +310,16 @@ workflow {
     } else {
         sort_single_ch = sorting_single(md_ch)
         cov_ch = coverage_single(sort_single_ch)
-        final_coverage_ch = cov_ch
+        final_coverage_ch = cov_ch[1]
         ind_ch = index(sort_single_ch)
 
         sort_single_ch
             .map { sample_id, sorted_bam -> [sample_id, 'final', [sorted_bam]] }
             .set { report_bam_input_ch }
 
-        cov_ch
-            .map { sample_id, coverage_file -> [sample_id, coverage_file, coverage_file] }
+        cov_ch[0]
+            .join(cov_ch[1], by: 0)
+            .map { sample_id, coverage_before, coverage_final -> [sample_id, coverage_before, coverage_final] }
             .set { report_coverage_ch }
 
         sort_single_ch

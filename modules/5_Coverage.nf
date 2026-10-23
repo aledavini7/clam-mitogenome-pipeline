@@ -91,12 +91,13 @@ process coverage_single {
     tuple val(sample_id), path(sorted_bams)
 
     output:
-    tuple val(sample_id), path('*.coverage') // coverage 
+    tuple val(sample_id), path("${sample_id}_before.coverage"), path("${sample_id}_after.coverage")
    
 
     script:
     """
-    samtools depth $sorted_bams > ${sample_id}.coverage
+    samtools depth $sorted_bams > ${sample_id}_before.coverage
+    cp ${sample_id}_before.coverage ${sample_id}_after.coverage
     """
 
 }
