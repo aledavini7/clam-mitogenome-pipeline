@@ -81,6 +81,7 @@ include { haplogrep; haplogrep1 } from './modules/8_Haplogroups_assignment.nf'
 include { merge_variant_calls; annotation_mafs; mitomap_annotation } from './modules/9_annotation.nf'
 include { bam_qc; no_mitomap_report_table; no_numt_exploration_report_table; build_report } from './modules/10_qc_report.nf'
 include { numt_like_exploration } from './modules/11_numt_exploration.nf'
+include { nuclear_reference_index; nuclear_alignment; nuclear_prepare_bam; nuclear_tumor_only_call; nuclear_paired_call; nuclear_germline_call; nuclear_annotate; nuclear_cnvkit_flat; nuclear_cnvkit_paired; nuclear_report } from './modules/12_nuclear_wes.nf'
 
 process merge_fastq_lanes {
     tag "$sample_id"
@@ -145,12 +146,66 @@ workflow {
         error "Missing required parameter: --outdir"
     }
 
+    analysis_target = (params.analysis_target ?: 'mtDNA').toString().trim()
+    if (!(analysis_target in ['mtDNA', 'nDNA', 'both'])) {
+        error "Unsupported --analysis_target '${analysis_target}'. Supported values: mtDNA, nDNA, both"
+    }
+    run_mt_analysis = analysis_target in ['mtDNA', 'both']
+    run_nuclear_analysis = analysis_target in ['nDNA', 'both']
+
+    nuclear_calling_mode = (params.nuclear_calling_mode ?: 'tumor_only').toString().trim().toLowerCase()
+    if (!(nuclear_calling_mode in ['tumor_only', 'paired', 'germline'])) {
+        error "Unsupported --nuclear_calling_mode '${nuclear_calling_mode}'. Supported values: tumor_only, paired, germline"
+    }
+
+    if (run_nuclear_analysis) {
+        if (!params.nuclear_reference?.toString()?.trim() || !params.nuclear_target_bed?.toString()?.trim()) {
+            error "nDNA analysis requires --nuclear_reference and --nuclear_target_bed"
+        }
+        if (!file(params.nuclear_reference).exists()) {
+            error "nDNA reference FASTA does not exist: ${params.nuclear_reference}"
+        }
+        if (!file(params.nuclear_target_bed).exists()) {
+            error "nDNA target BED does not exist: ${params.nuclear_target_bed}"
+        }
+        if (!params.nuclear_vep_cache?.toString()?.trim()) {
+            error "nDNA variant annotation requires --nuclear_vep_cache pointing to an offline Ensembl VEP cache"
+        }
+        if (!file(params.nuclear_vep_cache).exists()) {
+            error "nDNA VEP cache directory does not exist: ${params.nuclear_vep_cache}"
+        }
+        [
+            ['nuclear_germline_resource', params.nuclear_germline_resource, 'nuclear_germline_resource_tbi', params.nuclear_germline_resource_tbi],
+            ['nuclear_pon', params.nuclear_pon, 'nuclear_pon_tbi', params.nuclear_pon_tbi],
+            ['nuclear_gnomad_vcf', params.nuclear_gnomad_vcf, 'nuclear_gnomad_tbi', params.nuclear_gnomad_tbi],
+            ['nuclear_cosmic_vcf', params.nuclear_cosmic_vcf, 'nuclear_cosmic_tbi', params.nuclear_cosmic_tbi]
+        ].each { name, path_value, index_name, index_value ->
+            if (path_value?.toString()?.trim() && !index_value?.toString()?.trim()) {
+                error "${name} requires its matching ${index_name} path"
+            }
+            if (!path_value?.toString()?.trim() && index_value?.toString()?.trim()) {
+                error "${index_name} cannot be supplied without ${name}"
+            }
+            [[name, path_value], [index_name, index_value]].each { resource_name, resource_path ->
+                if (resource_path?.toString()?.trim() && !file(resource_path).exists()) {
+                    error "${resource_name} does not exist: ${resource_path}"
+                }
+            }
+        }
+        if (nuclear_calling_mode == 'paired' && !params.nuclear_sample_manifest?.toString()?.trim()) {
+            error "Paired nDNA calling requires --nuclear_sample_manifest with sample_id,role,pair_id columns"
+        }
+        if (nuclear_calling_mode == 'paired' && !file(params.nuclear_sample_manifest).exists()) {
+            error "nDNA sample manifest does not exist: ${params.nuclear_sample_manifest}"
+        }
+    }
+
     analysis_mode = normalizeAnalysisMode(params.analysis_mode ?: params.genome)
-    if (!analysis_mode) {
+    if (run_mt_analysis && !analysis_mode) {
         error "Unsupported --analysis_mode '${params.analysis_mode ?: params.genome}'. Supported values: wgs_numt_correction, rcrs_only"
     }
 
-    if (!params.analysis_modes || !params.analysis_modes[analysis_mode]) {
+    if (run_mt_analysis && (!params.analysis_modes || !params.analysis_modes[analysis_mode])) {
         error "Missing configuration for analysis mode '${analysis_mode}'. Check conf/genomes.config"
     }
 
@@ -158,15 +213,15 @@ workflow {
     run_numt_exploration = params.run_numt_exploration != null && params.run_numt_exploration.toString().toBoolean()
     reference_set = params.reference_set ?: (run_numt_correction ? 'GRCh38+rCRS' : 'rCRS')
 
-    if (run_numt_exploration && !run_numt_correction) {
+    if (run_mt_analysis && run_numt_exploration && !run_numt_correction) {
         error "--run_numt_exploration is only available with --analysis_mode wgs_numt_correction"
     }
 
-    if (!params.datadir || !params.mt_gsnap_db || !params.fasta || !params.mutserve_fasta || !params.mt_contig) {
+    if (run_mt_analysis && (!params.datadir || !params.mt_gsnap_db || !params.fasta || !params.mutserve_fasta || !params.mt_contig)) {
         error "Incomplete mitochondrial reference configuration for analysis mode '${analysis_mode}'"
     }
 
-    if (run_numt_correction && (!params.genomedir || !params.nuc_gsnap_db || !params.numt)) {
+    if (run_mt_analysis && run_numt_correction && (!params.genomedir || !params.nuc_gsnap_db || !params.numt)) {
         error "Incomplete nuclear/NUMTs reference configuration for analysis mode '${analysis_mode}'"
     }
 
@@ -191,11 +246,11 @@ workflow {
         error af_message
     }
 
-    if ((params.annotation_high_depth as Integer) < (params.annotation_medium_depth as Integer)) {
+    if (run_mt_analysis && (params.annotation_high_depth as Integer) < (params.annotation_medium_depth as Integer)) {
         error "--annotation_high_depth must be >= --annotation_medium_depth"
     }
 
-    if ((params.annotation_high_alt_reads as Integer) < (params.annotation_medium_alt_reads as Integer)) {
+    if (run_mt_analysis && (params.annotation_high_alt_reads as Integer) < (params.annotation_medium_alt_reads as Integer)) {
         error "--annotation_high_alt_reads must be >= --annotation_medium_alt_reads"
     }
 
@@ -254,10 +309,111 @@ workflow {
                 [clean_id, bam]
             }
 
-        sort_bam_ch = sorting_1(bam_ch)
-        reads_ch = bam2fqgz(sort_bam_ch)
+        if (run_mt_analysis) {
+            sort_bam_ch = sorting_1(bam_ch)
+            reads_ch = bam2fqgz(sort_bam_ch)
+        }
     }
 
+    if (run_nuclear_analysis) {
+        nuclear_reference_input_ch = Channel.value(file(params.nuclear_reference, checkIfExists: true))
+        nuclear_reference_index_ch = nuclear_reference_index(nuclear_reference_input_ch)
+        nuclear_reference_ch = nuclear_reference_index_ch.map { reference, reference_fai, index_files -> tuple(reference, reference_fai) }
+        nuclear_bed_ch = Channel.value(file(params.nuclear_target_bed, checkIfExists: true))
+
+        if (input_type == 'fastq') {
+            nuclear_bams_ch = nuclear_alignment(reads_ch, nuclear_reference_index_ch)
+        } else {
+            nuclear_bams_ch = nuclear_prepare_bam(bam_ch)
+        }
+
+        nuclear_call_input_ch = nuclear_bams_ch
+            .combine(nuclear_reference_ch)
+            .combine(nuclear_bed_ch)
+            .map { sample_id, bam, bai, reference, reference_fai, target_bed -> tuple(sample_id, bam, bai, reference, reference_fai, target_bed) }
+        nuclear_germline_resource_ch = Channel.value(params.nuclear_germline_resource ? [file(params.nuclear_germline_resource, checkIfExists: true), file(params.nuclear_germline_resource_tbi, checkIfExists: true)] : [])
+        nuclear_pon_ch = Channel.value(params.nuclear_pon ? [file(params.nuclear_pon, checkIfExists: true), file(params.nuclear_pon_tbi, checkIfExists: true)] : [])
+
+        if (nuclear_calling_mode == 'germline') {
+            nuclear_variants_ch = nuclear_germline_call(nuclear_call_input_ch)
+            nuclear_cnv_input_ch = nuclear_bams_ch
+                .combine(nuclear_reference_ch)
+                .combine(nuclear_bed_ch)
+                .map { sample_id, bam, bai, reference, reference_fai, target_bed -> tuple(sample_id, bam, bai, reference, target_bed) }
+            nuclear_cnv_ch = nuclear_cnvkit_flat(nuclear_cnv_input_ch)
+        } else if (nuclear_calling_mode == 'paired') {
+            manifest_rows = file(params.nuclear_sample_manifest).text.readLines()
+                .findAll { it.trim() && !it.trim().startsWith('#') }
+            if (manifest_rows.size() < 2) {
+                error "--nuclear_sample_manifest must contain a header and at least one sample pair"
+            }
+            manifest_header = manifest_rows[0].split('\t', -1).collect { it.trim().toLowerCase() }
+            required_manifest_columns = ['sample_id', 'role', 'pair_id']
+            if (!required_manifest_columns.every { manifest_header.contains(it) }) {
+                error "--nuclear_sample_manifest must be tab-delimited with sample_id, role, and pair_id columns"
+            }
+            manifest = manifest_rows.drop(1).collect { line ->
+                def values = line.split('\t', -1).collect { it.trim() }
+                [sample_id: values[manifest_header.indexOf('sample_id')], role: values[manifest_header.indexOf('role')].toLowerCase(), pair_id: values[manifest_header.indexOf('pair_id')]]
+            }
+            if (manifest.any { !it.sample_id || !it.pair_id || !(it.role in ['tumor', 'normal']) }) {
+                error "Each manifest row needs a sample_id, pair_id, and role of tumor or normal"
+            }
+            pair_records = manifest.groupBy { it.pair_id }.collect { pair_id, rows ->
+                def tumors = rows.findAll { it.role == 'tumor' }
+                def normals = rows.findAll { it.role == 'normal' }
+                if (tumors.size() != 1 || normals.size() != 1) {
+                    error "Paired manifest group '${pair_id}' must contain exactly one tumor and one normal"
+                }
+                [pair_id: pair_id, tumor_id: tumors[0].sample_id, normal_id: normals[0].sample_id]
+            }
+            nuclear_pair_bams_ch = nuclear_bams_ch.collect().flatMap { rows ->
+                def bam_by_sample = rows.collectEntries { row -> [(row[0]): [bam: row[1], bai: row[2]] ] }
+                pair_records.collect { pair ->
+                    if (!bam_by_sample[pair.tumor_id] || !bam_by_sample[pair.normal_id]) {
+                        error "Manifest pair '${pair.pair_id}' references samples absent from the input: ${pair.tumor_id}, ${pair.normal_id}"
+                    }
+                    tuple(pair.pair_id, pair.tumor_id, bam_by_sample[pair.tumor_id].bam, bam_by_sample[pair.tumor_id].bai,
+                        pair.normal_id, bam_by_sample[pair.normal_id].bam, bam_by_sample[pair.normal_id].bai)
+                }
+            }
+            nuclear_pair_call_input_ch = nuclear_pair_bams_ch
+                .combine(nuclear_reference_ch)
+                .combine(nuclear_bed_ch)
+                .map { pair_id, tumor_id, tumor_bam, tumor_bai, normal_id, normal_bam, normal_bai, reference, reference_fai, target_bed ->
+                    tuple(pair_id, tumor_id, tumor_bam, tumor_bai, normal_id, normal_bam, normal_bai, reference, reference_fai, target_bed)
+                }
+            nuclear_variants_ch = nuclear_paired_call(nuclear_pair_call_input_ch, nuclear_germline_resource_ch, nuclear_pon_ch)
+            nuclear_cnv_input_ch = nuclear_pair_bams_ch
+                .combine(nuclear_reference_ch)
+                .combine(nuclear_bed_ch)
+                .map { pair_id, tumor_id, tumor_bam, tumor_bai, normal_id, normal_bam, normal_bai, reference, reference_fai, target_bed ->
+                    tuple(pair_id, tumor_id, tumor_bam, tumor_bai, normal_id, normal_bam, normal_bai, reference, reference_fai, target_bed)
+                }
+            nuclear_cnv_ch = nuclear_cnvkit_paired(nuclear_cnv_input_ch)
+        } else {
+            nuclear_variants_ch = nuclear_tumor_only_call(nuclear_call_input_ch, nuclear_germline_resource_ch, nuclear_pon_ch)
+            nuclear_cnv_input_ch = nuclear_bams_ch
+                .combine(nuclear_reference_ch)
+                .combine(nuclear_bed_ch)
+                .map { sample_id, bam, bai, reference, reference_fai, target_bed -> tuple(sample_id, bam, bai, reference, reference_fai, target_bed) }
+            nuclear_cnv_ch = nuclear_cnvkit_flat(nuclear_cnv_input_ch)
+        }
+
+        nuclear_annotated_ch = nuclear_variants_ch
+            .map { sample_id, unfiltered_vcf, filtered_vcf -> tuple(sample_id, filtered_vcf) }
+        nuclear_vep_cache_ch = Channel.value(file(params.nuclear_vep_cache, checkIfExists: true))
+        nuclear_gnomad_vcf_ch = Channel.value(params.nuclear_gnomad_vcf ? [file(params.nuclear_gnomad_vcf, checkIfExists: true), file(params.nuclear_gnomad_tbi, checkIfExists: true)] : [])
+        nuclear_cosmic_vcf_ch = Channel.value(params.nuclear_cosmic_vcf ? [file(params.nuclear_cosmic_vcf, checkIfExists: true), file(params.nuclear_cosmic_tbi, checkIfExists: true)] : [])
+        nuclear_annotated_ch = nuclear_annotate(nuclear_annotated_ch, nuclear_vep_cache_ch, nuclear_gnomad_vcf_ch, nuclear_cosmic_vcf_ch)
+        nuclear_annotated_ch
+            .join(nuclear_cnv_ch, by: 0)
+            .map { sample_id, annotated_vcf, maf, cnvkit_out -> tuple(sample_id, nuclear_calling_mode, annotated_vcf, maf, cnvkit_out) }
+            .set { nuclear_report_input_ch }
+        nuclear_report(nuclear_report_input_ch)
+    }
+
+    if (run_mt_analysis) {
     bams_ch = alignment_MT(reads_ch)
     md_ch = get_the_MD(bams_ch)
 
@@ -393,6 +549,7 @@ workflow {
         .set { report_input_ch }
 
     report_ch = build_report(report_input_ch)
+    }
 
 
 }

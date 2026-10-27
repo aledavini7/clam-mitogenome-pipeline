@@ -29,6 +29,78 @@
       ],
       "default": "wgs_numt_correction"
     },
+    "analysis_target": {
+      "type": "string",
+      "description": "Select which independent analysis branch to run. The default preserves the existing mitochondrial workflow.",
+      "enum": ["mtDNA", "nDNA", "both"],
+      "default": "mtDNA"
+    },
+    "nuclear_calling_mode": {
+      "type": "string",
+      "description": "Variant calling approach for the nuclear branch. Tumor-only and paired use Mutect2; germline uses HaplotypeCaller.",
+      "enum": ["tumor_only", "paired", "germline"],
+      "default": "tumor_only"
+    },
+    "nuclear_reference": {
+      "type": "string",
+      "format": "file-path",
+      "description": "External GRCh38 FASTA path, required for nDNA or both. Use the FASTA build matching the WES BED and input BAMs."
+    },
+    "nuclear_target_bed": {
+      "type": "string",
+      "format": "file-path",
+      "description": "External capture target BED path, required for nDNA or both. For the current assay, provide the Twist Exome 2.0 plus Comprehensive Exome spike-in hg38 BED through Seqera; this BED is intentionally not bundled in the repository."
+    },
+    "nuclear_sample_manifest": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Tab-delimited manifest for paired mode with header sample_id, role, pair_id and one tumor plus one normal per pair."
+    },
+    "nuclear_vep_cache": {
+      "type": "string",
+      "format": "directory-path",
+      "description": "External offline Ensembl VEP cache directory for GRCh38, required for nDNA or both."
+    },
+    "nuclear_germline_resource": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Optional indexed GRCh38 Mutect2 population germline resource VCF for somatic filtering. Provide its .tbi file as nuclear_germline_resource_tbi."
+    },
+    "nuclear_germline_resource_tbi": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Tabix index corresponding to nuclear_germline_resource."
+    },
+    "nuclear_pon": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Optional indexed GRCh38 Mutect2 panel-of-normals VCF. Provide its .tbi file as nuclear_pon_tbi."
+    },
+    "nuclear_pon_tbi": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Tabix index corresponding to nuclear_pon."
+    },
+    "nuclear_gnomad_vcf": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Optional indexed GRCh38 gnomAD VCF for VEP custom annotation. Provide its .tbi file as nuclear_gnomad_tbi."
+    },
+    "nuclear_gnomad_tbi": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Tabix index corresponding to nuclear_gnomad_vcf."
+    },
+    "nuclear_cosmic_vcf": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Optional licensed, indexed GRCh38 COSMIC VCF for VEP custom annotation. Provide its .tbi file as nuclear_cosmic_tbi."
+    },
+    "nuclear_cosmic_tbi": {
+      "type": "string",
+      "format": "file-path",
+      "description": "Tabix index corresponding to nuclear_cosmic_vcf."
+    },
     "genome": {
       "type": "string",
       "description": "Legacy parameter. Prefer analysis_mode.",
@@ -63,6 +135,12 @@
       "type": "string",
       "default": "docker://ghcr.io/aledavini7/clam-annotation:0.1.1",
       "description": "Container image used for annotation summary processes.",
+      "hidden": true
+    },
+    "nuclear_tool_container": {
+      "type": "string",
+      "default": "docker://ghcr.io/aledavini7/clam-nuclear:0.1.0",
+      "description": "Container with BWA-MEM2, samtools, CNVkit, and offline VEP runtime.",
       "hidden": true
     },
     "annotation_high_depth": {

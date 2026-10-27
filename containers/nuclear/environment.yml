@@ -1,0 +1,10 @@
+name: clam-nuclear
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  - bwa-mem2=2.2.1
+  - samtools=1.20
+  - cnvkit=0.9.11
+  - ensembl-vep=112.0

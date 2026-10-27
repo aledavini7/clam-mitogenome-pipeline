@@ -1,9 +1,9 @@
 # CLAM Mitochondrial Genome Pipeline
 
 CLAM is a Nextflow pipeline for mitochondrial genome analysis from human WGS-like
-data, with a focus on producing a consistently remapped mitochondrial BAM,
-performing NUMT-aware correction, and calling mitochondrial variants with both
-Mutect2 and mutserve.
+data and a separate, optional nuclear WES analysis branch. The mitochondrial
+workflow remains the default and retains its existing NUMT-aware correction and
+variant-calling behavior.
 
 This repository is a modernization of an older local CLAM workflow. The current
 goal is to make the pipeline reproducible, containerized, cluster-friendly, and
@@ -104,6 +104,57 @@ nextflow run clam.nf \
 
 ## Analysis Modes
 
+`--analysis_target` selects which analysis branch runs:
+
+| Target | Behavior |
+| --- | --- |
+| `mtDNA` (default) | Existing mitochondrial workflow only. |
+| `nDNA` | Nuclear WES workflow only, using BWA-MEM2 for FASTQ input or preparing the supplied BAM. |
+| `both` | Runs both branches from the supplied FASTQ/BAM inputs. |
+
+For `nDNA` and `both`, provide `--nuclear_reference` (GRCh38 FASTA),
+`--nuclear_target_bed` (capture BED path), and `--nuclear_vep_cache` (offline
+GRCh38 VEP cache). The BED remains an external input so it can be selected as a
+Seqera file parameter; it is not vendored in this repository. Confirm that the
+BED describes the exact enrichment design used. Twist Exome 2.0 alone and
+Exome 2.0 plus Comprehensive Exome Spike-in have different target BEDs.
+
+Choose one nuclear calling mode with `--nuclear_calling_mode`:
+
+| Mode | Caller | Use |
+| --- | --- | --- |
+| `tumor_only` | Mutect2 | Somatic candidate calls when only tumor samples are supplied. |
+| `paired` | Mutect2 | Somatic calls with matched tumor-normal samples and a tab-separated manifest. |
+| `germline` | HaplotypeCaller | Germline-style variant calls from each sample. Variants in T cells may also be acquired somatic mutations and are not proven constitutional by this mode. |
+
+The paired manifest requires the columns `sample_id`, `role`, and `pair_id`,
+with exactly one `tumor` and one `normal` row per pair. Tumor-only and germline
+modes also run CNVkit with a flat reference; paired mode uses the matched normal
+for CNVkit. Optional Mutect2 germline-resource and panel-of-normals VCF paths,
+plus optional gnomAD and COSMIC VCF paths, can be supplied separately with
+their matching `.tbi` indexes. COSMIC requires an appropriately licensed
+resource. The nDNA outputs include filtered
+VCFs, VEP-annotated VCFs, MAF-compatible tables, CNVkit results, and a per-sample
+HTML summary. Structural-variant calling is not included in this initial WES
+branch.
+
+Example nuclear-only run (replace every example path with an accessible path):
+
+```bash
+nextflow run clam.nf \
+  --input '/path/to/fastqs/*.fastq.gz' \
+  --input_type fastq \
+  --analysis_target nDNA \
+  --nuclear_reference /path/to/GRCh38.primary_assembly.genome.fa \
+  --nuclear_target_bed /path/to/twist_capture_targets_hg38.bed \
+  --nuclear_vep_cache /path/to/vep_cache \
+  --nuclear_calling_mode germline
+```
+
+The reference/index and BED must use compatible GRCh38 contig names and
+coordinates. For BAM input, the BAM must already be aligned to the supplied
+reference build.
+
 | Mode | NUMT correction | Internal references | Intended use |
 | --- | --- | --- | --- |
 | `with_NUMT_correction` | Yes | rCRS plus GRCh38 nuclear-only remapping | Runs nuclear remapping and MitoScape filtering. |
@@ -136,6 +187,7 @@ using Docker/OCI images as the source:
 | `ghcr.io/aledavini7/clam-mitoscape:0.1.0` | Java 8 runtime for the Spark-based MitoScape NUMT classification step. |
 | `ghcr.io/aledavini7/clam-mutect2:0.1.0` | GATK4/Mutect2 runtime. |
 | `ghcr.io/aledavini7/clam-annotation:0.1.1` | Lightweight Python runtime for mitochondrial variant summary and heteroplasmy tables. |
+| `ghcr.io/aledavini7/clam-nuclear:0.1.0` | BWA-MEM2, samtools, CNVkit, Ensembl VEP 112, and Python for nuclear WES. |
 
 Both images are built for `linux/amd64`.
 MitoScape runs in its own Java 8 container because its bundled Spark/Scala
@@ -147,9 +199,10 @@ Container build definitions live in:
 - `containers/mitoscape/`
 - `containers/mutect2/`
 - `containers/annotation/`
+- `containers/nuclear/`
 
 The GitHub Actions workflow in `.github/workflows/build-clam-core.yml` builds
-and publishes both container images to GHCR.
+and publishes the container images to GHCR.
 
 ## Repository Layout
 
