@@ -168,10 +168,11 @@ workflow {
         if (!file(params.nuclear_target_bed).exists()) {
             error "nDNA target BED does not exist: ${params.nuclear_target_bed}"
         }
-        if (!params.nuclear_vep_cache?.toString()?.trim()) {
+        run_nuclear_annotation = params.nuclear_annotate == null || params.nuclear_annotate.toString().toBoolean()
+        if (run_nuclear_annotation && !params.nuclear_vep_cache?.toString()?.trim()) {
             error "nDNA variant annotation requires --nuclear_vep_cache pointing to an offline Ensembl VEP cache"
         }
-        if (!file(params.nuclear_vep_cache).exists()) {
+        if (run_nuclear_annotation && !file(params.nuclear_vep_cache).exists()) {
             error "nDNA VEP cache directory does not exist: ${params.nuclear_vep_cache}"
         }
         [
@@ -400,17 +401,22 @@ workflow {
             nuclear_cnv_ch = nuclear_cnvkit_flat(nuclear_cnv_input_ch)
         }
 
-        nuclear_annotated_ch = nuclear_variants_ch
-            .map { sample_id, unfiltered_vcf, filtered_vcf -> tuple(sample_id, filtered_vcf) }
-        nuclear_vep_cache_ch = Channel.value(file(params.nuclear_vep_cache, checkIfExists: true))
-        nuclear_gnomad_vcf_ch = Channel.value(params.nuclear_gnomad_vcf ? [file(params.nuclear_gnomad_vcf, checkIfExists: true), file(params.nuclear_gnomad_tbi, checkIfExists: true)] : [])
-        nuclear_cosmic_vcf_ch = Channel.value(params.nuclear_cosmic_vcf ? [file(params.nuclear_cosmic_vcf, checkIfExists: true), file(params.nuclear_cosmic_tbi, checkIfExists: true)] : [])
-        nuclear_annotated_ch = nuclear_annotate(nuclear_annotated_ch, nuclear_vep_cache_ch, nuclear_gnomad_vcf_ch, nuclear_cosmic_vcf_ch)
-        nuclear_annotated_ch
-            .join(nuclear_cnv_ch, by: 0)
-            .map { sample_id, annotated_vcf, maf, cnvkit_out -> tuple(sample_id, nuclear_calling_mode, annotated_vcf, maf, cnvkit_out) }
-            .set { nuclear_report_input_ch }
-        nuclear_report(nuclear_report_input_ch)
+        if (run_nuclear_annotation) {
+            nuclear_annotated_ch = nuclear_variants_ch
+                .combine(nuclear_reference_ch)
+                .map { sample_id, unfiltered_vcf, filtered_vcf, reference, reference_fai -> tuple(sample_id, filtered_vcf, reference, reference_fai) }
+            nuclear_vep_cache_ch = Channel.value(file(params.nuclear_vep_cache, checkIfExists: true))
+            nuclear_gnomad_vcf_ch = Channel.value(params.nuclear_gnomad_vcf ? [file(params.nuclear_gnomad_vcf, checkIfExists: true), file(params.nuclear_gnomad_tbi, checkIfExists: true)] : [])
+            nuclear_cosmic_vcf_ch = Channel.value(params.nuclear_cosmic_vcf ? [file(params.nuclear_cosmic_vcf, checkIfExists: true), file(params.nuclear_cosmic_tbi, checkIfExists: true)] : [])
+            nuclear_annotated_ch = nuclear_annotate(nuclear_annotated_ch, nuclear_vep_cache_ch, nuclear_gnomad_vcf_ch, nuclear_cosmic_vcf_ch)
+            nuclear_annotated_ch
+                .join(nuclear_cnv_ch, by: 0)
+                .map { sample_id, annotated_vcf, maf, cnvkit_out -> tuple(sample_id, nuclear_calling_mode, annotated_vcf, maf, cnvkit_out) }
+                .set { nuclear_report_input_ch }
+            nuclear_report(nuclear_report_input_ch)
+        } else {
+            log.info 'nDNA annotation disabled: VEP and MAF generation will be skipped.'
+        }
     }
 
     if (run_mt_analysis) {

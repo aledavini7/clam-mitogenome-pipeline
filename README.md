@@ -112,9 +112,12 @@ nextflow run clam.nf \
 | `nDNA` | Nuclear WES workflow only, using BWA-MEM2 for FASTQ input or preparing the supplied BAM. |
 | `both` | Runs both branches from the supplied FASTQ/BAM inputs. |
 
-For `nDNA` and `both`, provide `--nuclear_reference` (GRCh38 FASTA),
-`--nuclear_target_bed` (capture BED path), and `--nuclear_vep_cache` (offline
-GRCh38 VEP cache). The BED remains an external input so it can be selected as a
+For `nDNA` and `both`, provide `--nuclear_reference` (GRCh38 FASTA) and
+`--nuclear_target_bed` (capture BED path). By default, VEP annotation and MAF
+generation are enabled and require `--nuclear_vep_cache` (offline GRCh38 VEP
+cache). For a temporary alignment/calling/CNV test before the cache is ready,
+set `--nuclear_annotate false`; this skips VEP, MAF generation, and the nuclear
+HTML report. Re-enable it for annotated outputs. The BED remains an external input so it can be selected as a
 Seqera file parameter; it is not vendored in this repository. Confirm that the
 BED describes the exact enrichment design used. Twist Exome 2.0 alone and
 Exome 2.0 plus Comprehensive Exome Spike-in have different target BEDs.
@@ -148,6 +151,7 @@ nextflow run clam.nf \
   --nuclear_reference /path/to/GRCh38.primary_assembly.genome.fa \
   --nuclear_target_bed /path/to/twist_capture_targets_hg38.bed \
   --nuclear_vep_cache /path/to/vep_cache \
+  --nuclear_annotate true \
   --nuclear_calling_mode germline
 ```
 

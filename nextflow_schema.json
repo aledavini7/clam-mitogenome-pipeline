@@ -59,7 +59,12 @@
     "nuclear_vep_cache": {
       "type": "string",
       "format": "directory-path",
-      "description": "External offline Ensembl VEP cache directory for GRCh38, required for nDNA or both."
+      "description": "External offline Ensembl VEP cache directory for GRCh38, required when nuclear_annotate is true."
+    },
+    "nuclear_annotate": {
+      "type": "boolean",
+      "description": "Run VEP annotation and generate a MAF. Disable temporarily to test nuclear alignment, variant calling, and CNVkit without the VEP cache.",
+      "default": true
     },
     "nuclear_germline_resource": {
       "type": "string",

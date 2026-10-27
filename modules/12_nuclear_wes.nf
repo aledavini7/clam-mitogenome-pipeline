@@ -164,7 +164,7 @@ process nuclear_annotate {
     container params.nuclear_tool_container
 
     input:
-    tuple val(sample_id), path(raw_vcf)
+    tuple val(sample_id), path(raw_vcf), path(reference), path(reference_fai)
     path vep_cache
     path gnomad_vcf
     path cosmic_vcf
@@ -181,7 +181,7 @@ process nuclear_annotate {
         --input_file $raw_vcf \
         --output_file ${sample_id}.annotated.vcf \
         --format vcf --vcf --offline --cache --dir_cache $vep_cache \
-        --species homo_sapiens --assembly GRCh38 --cache_version 112 \
+        --species homo_sapiens --assembly GRCh38 --cache_version 112 --fasta $reference \
         --symbol --canonical --mane --hgvs --numbers --fork $task.cpus \
         --force_overwrite \
         ${custom.join(' ')}
