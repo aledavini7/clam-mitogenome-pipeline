@@ -6,7 +6,7 @@ on:
     branches:
       - main
       - master
-      - codex/nuclear-wes-analysis
+      - nuclear-wes-analysis
     paths:
       - containers/clam-core/**
       - containers/annotation/**
