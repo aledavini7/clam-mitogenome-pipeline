@@ -30,9 +30,41 @@ process nuclear_alignment {
 
     script:
     """
+    samtools dict -o nuclear_reference.dict $reference
+    set -o pipefail
     bwa-mem2 mem -t $task.cpus \
         -R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tPL:ILLUMINA' \
         nuclear_index ${reads[0]} ${reads[1]} | \
+        awk -v dict=nuclear_reference.dict '
+            BEGIN {
+                while ((getline line < dict) > 0) {
+                    if (line ~ /^@SQ/) sq[++n] = line
+                }
+                close(dict)
+            }
+            /^@SQ/ { next }
+            /^@HD/ {
+                print
+                for (i = 1; i <= n; i++) print sq[i]
+                inserted = 1
+                next
+            }
+            /^@/ {
+                if (!inserted) {
+                    for (i = 1; i <= n; i++) print sq[i]
+                    inserted = 1
+                }
+                print
+                next
+            }
+            {
+                if (!inserted) {
+                    for (i = 1; i <= n; i++) print sq[i]
+                    inserted = 1
+                }
+                print
+            }
+        ' | \
         samtools sort -n -@ $task.cpus -o ${sample_id}.name.bam -
     samtools fixmate -m ${sample_id}.name.bam ${sample_id}.fixmate.bam
     samtools sort -@ $task.cpus -o ${sample_id}.coord.bam ${sample_id}.fixmate.bam
