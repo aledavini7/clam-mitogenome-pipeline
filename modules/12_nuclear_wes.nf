@@ -64,6 +64,15 @@ process nuclear_alignment {
                 }
                 print
             }
+            END {
+                if (!inserted) {
+                    for (i = 1; i <= n; i++) print sq[i]
+                }
+                if (n == 0) {
+                    print "ERROR: samtools dict produced no @SQ records" > "/dev/stderr"
+                    exit 2
+                }
+            }
         ' | \
         samtools sort -n -@ $task.cpus -o ${sample_id}.name.bam -
     samtools fixmate -m ${sample_id}.name.bam ${sample_id}.fixmate.bam
