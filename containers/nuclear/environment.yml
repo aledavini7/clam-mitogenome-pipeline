@@ -8,3 +8,4 @@ dependencies:
   - samtools=1.20
   - cnvkit=0.9.11
   - ensembl-vep=112.0
+  - perl-list-moreutils
