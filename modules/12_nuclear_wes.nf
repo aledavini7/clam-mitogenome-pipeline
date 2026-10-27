@@ -38,7 +38,7 @@ process nuclear_alignment {
         awk -v dict=nuclear_reference.dict '
             BEGIN {
                 while ((getline line < dict) > 0) {
-                    if (line ~ /^@SQ/) sq[++n] = line
+                    if (substr(line, 1, 3) == "@SQ") sq[++n] = line
                 }
                 close(dict)
             }
