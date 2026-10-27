@@ -157,7 +157,10 @@ nextflow run clam.nf \
 
 The reference/index and BED must use compatible GRCh38 contig names and
 coordinates. For BAM input, the BAM must already be aligned to the supplied
-reference build.
+reference build. When building the BWA-MEM2 index, CLAM removes FASTA header
+descriptions after the first whitespace so contig comments cannot produce
+invalid SAM header tags; the original FASTA remains the reference for calling
+and CNV analysis.
 
 | Mode | NUMT correction | Internal references | Intended use |
 | --- | --- | --- | --- |

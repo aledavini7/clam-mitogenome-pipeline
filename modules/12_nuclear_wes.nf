@@ -11,7 +11,8 @@ process nuclear_reference_index {
     script:
     """
     samtools faidx $reference
-    bwa-mem2 index -p nuclear_index $reference
+    awk '/^>/{sub(/[[:space:]].*/, "")} {print}' $reference > nuclear_reference.bwa.fa
+    bwa-mem2 index -p nuclear_index nuclear_reference.bwa.fa
     """
 }
 
