@@ -250,7 +250,7 @@ def main():
     parser.add_argument("--common-af-threshold", type=float, default=COMMON_AF_THRESHOLD,
                         help="Flag population AF at/above this value as common (default: 0.01).")
     parser.add_argument("--top-variants", type=int, default=100,
-                        help="Maximum protein-altering variants to show (default: 100).")
+                        help="Legacy compatibility option; all protein-altering variants are shown.")
     args = parser.parse_args()
     if not 0 <= args.common_af_threshold <= 1:
         parser.error("--common-af-threshold must be between 0 and 1")
@@ -262,24 +262,16 @@ def main():
     variants = unique_variants(maf_rows)
     coding = [row for row in variants if row.get("Variant_Classification", "") in PROTEIN_ALTERING]
     coding.sort(key=lambda row: rank_key(row, args.common_af_threshold))
-    top = coding[:args.top_variants]
     high_impact = sum(row.get("Variant_Classification") in {
         "Frame_Shift_Del", "Frame_Shift_Ins", "Nonsense_Mutation", "Nonstop_Mutation",
         "Translation_Start_Site", "Splice_Site"
     } for row in variants)
     missense = sum(row.get("Variant_Classification") == "Missense_Mutation" for row in variants)
-    synonymous = sum(row.get("Variant_Classification") == "Silent" for row in variants)
     gnomad_count = sum(number(row.get("gnomAD_AF")) is not None for row in variants)
     common_count = sum(
         (number(row.get("gnomAD_AF")) or 0) >= args.common_af_threshold
         for row in variants
     )
-    cosmic_count = sum(row.get("COSMIC_ID", "").strip() not in ("", ".") for row in variants)
-    gene_counts = {}
-    for row in coding:
-        gene = row.get("Hugo_Symbol", "").upper()
-        if gene in REVIEW_GENE_WATCHLIST:
-            gene_counts[gene] = gene_counts.get(gene, 0) + 1
 
     cnv_dir = Path(args.cnv_dir)
     seg_paths = choose_primary_segments(cnv_dir)
@@ -295,25 +287,6 @@ def main():
     candidate_segments.sort(key=lambda segment: (-segment["length"], -abs(segment["mean"])))
     reference_mode = "paired/reference CNVkit baseline" if list(cnv_dir.glob("paired_reference.cnn")) else "flat CNVkit baseline (single-sample exploratory)"
     coverage = target_coverage(cnv_dir)
-
-    if args.calling_mode == "tumor_only":
-        notes = [
-            "Tumor-only PASS calls are candidates, not confirmed somatic mutations; without a matched normal, inherited variants remain."
-        ]
-    elif args.calling_mode == "germline":
-        notes = ["Germline-style calls show variants present in this sample; they do not establish constitutional inheritance."]
-    else:
-        notes = ["Matched tumor-normal calling was used; interpretation still depends on read support, purity, and annotation."]
-    if gnomad_count == 0:
-        notes.append("No gnomAD allele-frequency values are present in this MAF, so common population variants are not flagged here.")
-    elif common_count:
-        notes.append(f"{common_count:,} calls have gnomAD AF ≥ {args.common_af_threshold:g}; these are flagged as common and ranked lower within the same gene/consequence priority. This is a population-frequency screen, not a somatic or pathogenicity classification.")
-    if cosmic_count == 0:
-        notes.append("No COSMIC IDs are present in this MAF.")
-    if extreme_segments:
-        notes.append(f"{len(extreme_segments)} selected CNV segment(s) have |log2 ratio| > 5 and are excluded from the broad-event summary as likely coverage/baseline outliers requiring review.")
-    if "flat" in reference_mode:
-        notes.append("CNV segments use a flat single-sample baseline and are exploratory; do not interpret these as confirmed gains or losses without a suitable normal/reference.")
 
     variant_table_rows = []
     for row_index, row in enumerate(coding):
@@ -356,8 +329,7 @@ def main():
         ("PASS variant records", f"{len(variants):,}", "Unique chromosome-position-allele records in the MAF"),
         ("Protein-altering candidates", f"{len(coding):,}", f"{missense:,} missense; {high_impact:,} truncating/splice/start/stop"),
         ("gnomAD frequency", f"{gnomad_count:,}/{len(variants):,} annotated", f"{common_count:,} at or above AF {args.common_af_threshold:g}; missing AF is unknown"),
-        ("Synonymous", f"{synonymous:,}", "Silent consequence records"),
-        ("Priority genes with calls", f"{len(gene_counts):,} genes", ", ".join(sorted(gene_counts)[:8]) or "None in protein-altering rows"),
+        ("Non-synonymous calls", f"{len(coding):,}", "Protein-altering variants in the MAF"),
         ("Mean on-target depth", fmt_depth(coverage["mean"]) if coverage else "Not available", f"{coverage['bins']:,} target bins" if coverage else "Target coverage file absent from supplied outputs"),
         ("Target-bin depth range", f"{fmt_depth(coverage['min'])} – {fmt_depth(coverage['max'])}" if coverage else "Not available", "Minimum to maximum target-bin mean depth"),
     ]
@@ -365,9 +337,6 @@ def main():
         f'<div class="card"><div class="label">{escape(label)}</div><div class="value">{escape(value)}</div><div class="hint">{escape(hint)}</div></div>'
         for label, value, hint in summary_cards
     )
-    notes_html = "".join(f"<li>{escape(note)}</li>" for note in notes)
-    maf_link = f'../annotation/{html.escape(Path(args.maf).name)}'
-    vcf_name = html.escape(Path(args.vcf).name)
     variant_table_html = table(
         ["Gene", "Priority", "Variant", "Consequence", "HGVS cDNA", "HGVS protein", "VAF", "Alt/Depth", "gnomAD AF", "Population frequency", "COSMIC"],
         variant_table_rows,
@@ -376,14 +345,12 @@ def main():
             marker in row for marker in ("TP53 focus", "Core driver", "Review-priority gene")
         ) else "",
     )
-    # Add client-side filtering while keeping the full protein-altering callset
-    # in the standalone report. The first N rows are visible until a filter is used.
+    # Keep the full protein-altering callset visible and scrollable; filters only
+    # narrow rows when the user enters a search or selects a consequence.
     variant_rows_html = []
     for idx, cells in enumerate(variant_table_rows):
         rendered = "".join(f"<td>{cell}</td>" for cell in cells)
         row_class = "watchlist" if cells[1] in ("TP53 focus", "Core driver", "Review-priority gene") else ""
-        if idx >= args.top_variants:
-            row_class += " initially-hidden"
         source_row = coding[idx]
         full_alt = source_row.get("Tumor_Seq_Allele2", "")
         searchable = " ".join(str(cell).replace("<strong>", "").replace("</strong>", "") for cell in cells) + " " + full_alt
@@ -391,7 +358,7 @@ def main():
     variant_table_html = f'''<div class="table-controls">
 <label>Search all protein-altering variants <input id="variant-search" type="search" placeholder="Gene, HGVS, consequence, coordinate"></label>
 <label>Consequence <select id="consequence-filter"><option value="">All consequences</option>{"".join(f"<option>{escape(consequence)}</option>" for consequence in sorted({row.get("Variant_Classification", "") for row in coding}))}</select></label>
-<span id="variant-count">Showing {min(len(coding), args.top_variants):,} of {len(coding):,}</span>
+<span id="variant-count">Showing all {len(coding):,} protein-altering variants</span>
 </div><div class="table-wrap"><table id="nuclear-variants"><thead><tr>{"".join(f"<th>{escape(header)}</th>" for header in ["Gene", "Priority", "Variant", "Consequence", "HGVS cDNA", "HGVS protein", "VAF", "Alt/Depth", "gnomAD AF", "Population frequency", "COSMIC"])}</tr></thead><tbody>{"".join(variant_rows_html) if variant_rows_html else f'<tr><td colspan="11" class="empty">No protein-altering variants found in the MAF.</td></tr>'}</tbody></table></div>'''
     cnv_table_html = table(
         ["Chromosome", "Interval", "Length", "Segment log2", "Direction", "Bins"],
@@ -407,25 +374,25 @@ def main():
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CLAM nDNA summary: {sample_id}</title>
 <style>
-:root{{color-scheme:light;--ink:#172033;--muted:#596579;--line:#d9e0e8;--blue:#1d4ed8;--pale:#f4f7fb;--amber:#fff7df;--red:#fff0ee}}
-*{{box-sizing:border-box}} body{{font:15px/1.45 system-ui,-apple-system,sans-serif;max-width:1500px;margin:0 auto;padding:28px 22px;color:var(--ink)}}
-h1{{margin:0 0 4px;font-size:28px}} h2{{margin:30px 0 8px;font-size:20px}} p{{margin:5px 0;color:var(--muted)}} .meta{{margin-bottom:20px}}
+:root{{color-scheme:light;--ink:#16202a;--muted:#667085;--line:#d9e2ec;--blue:#9a3412;--panel:#fff;--bg:#f5f7fb;--amber:#fff7df;--red:#fff0ee}}
+*{{box-sizing:border-box}} body{{margin:0;font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg);letter-spacing:0}}
+header{{padding:30px 36px 22px;background:#7c2d12;color:#fff}} header h1{{margin:0;font-size:30px;font-weight:760;letter-spacing:0}} header p{{margin:8px 0 0;color:#ffedd5}}
+main{{max-width:1220px;margin:0 auto;padding:24px 24px 44px}} h2{{margin:30px 0 8px;font-size:20px}} p{{margin:5px 0;color:var(--muted)}} .meta{{margin-bottom:20px}}
 .cards{{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:20px 0}}
 .card{{padding:15px;border:1px solid var(--line);border-radius:10px;background:white;min-height:112px}}
 .label{{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}} .value{{font-size:24px;font-weight:700;margin:5px 0}} .hint{{font-size:12px;color:var(--muted)}}
 .notice{{border-left:4px solid #d97706;background:var(--amber);padding:12px 16px;margin:18px 0;border-radius:4px}} .notice ul{{margin:4px 0 0;padding-left:20px}} .notice li{{margin:4px 0}}
-.table-wrap{{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:10px 0 20px}} table{{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}} th,td{{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left}} #nuclear-variants td:first-child{{white-space:nowrap}} th{{position:sticky;top:0;background:#edf2f7;z-index:1}} tr:last-child td{{border-bottom:0}} .watchlist{{background:#f0f6ff}} .empty{{padding:16px;color:var(--muted)}}
-.table-controls{{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin:12px 0}} .table-controls label{{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}} .table-controls input,.table-controls select{{padding:8px;border:1px solid var(--line);border-radius:6px;min-width:220px}} .table-controls span{{font-size:12px;color:var(--muted)}} .initially-hidden{{display:none}}
-.links a{{color:var(--blue);margin-right:18px}} .small{{font-size:12px;color:var(--muted)}} .badge{{display:inline-block;border-radius:99px;background:#dbeafe;color:#1e40af;padding:2px 8px;font-size:11px;font-weight:650}}
+.table-wrap{{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:8px;margin:10px 0 20px}} table{{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}} th,td{{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left}} #nuclear-variants td:first-child{{white-space:nowrap}} th{{position:sticky;top:0;background:#edf2f7;z-index:1}} tr:last-child td{{border-bottom:0}} #nuclear-variants tbody tr:not(.watchlist){{background:#f8fafc}} .watchlist{{background:#eff6ff}} .empty{{padding:16px;color:var(--muted)}}
+.table-controls{{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin:12px 0}} .table-controls label{{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}} .table-controls input,.table-controls select{{padding:8px;border:1px solid var(--line);border-radius:6px;min-width:220px}} .table-controls span{{font-size:12px;color:var(--muted)}}
+.small{{font-size:12px;color:var(--muted)}} .badge{{display:inline-block;border-radius:99px;background:#dbeafe;color:#1e40af;padding:2px 8px;font-size:11px;font-weight:650}}
 @media print{{body{{max-width:none;padding:0}} .table-wrap{{overflow:visible}} table{{white-space:normal}} th{{position:static}}}}
 </style></head><body>
-<h1>Nuclear WES summary</h1>
+<header><h1>CLAM Nuclear DNA Report</h1><p>Whole-exome sequencing (WES) &nbsp;|&nbsp; Sample {sample_id}</p></header>
+<main>
 <div class="meta"><p><b>Sample:</b> {sample_id} &nbsp; <b>Calling mode:</b> {escape(args.calling_mode)} &nbsp; <b>CNV baseline:</b> {escape(reference_mode)}</p>
-<p class="links"><a href="{maf_link}">Complete MAF</a><a href="../annotation/{vcf_name}">Annotated VCF</a><a href="../cnv/cnvkit_out/">CNVkit files</a></p></div>
+ </div>
 <div class="cards">{cards}</div>
-<div class="notice"><b>Interpretation and QC notes</b><ul>{notes_html}</ul></div>
 <h2>Protein-altering candidates to review</h2>
-<p>The first {args.top_variants} unique variants are shown initially; search and consequence filters include the complete protein-altering callset. Watchlist genes are surfaced first; calls with gnomAD AF ≥ {args.common_af_threshold:g} are flagged and ranked lower within the same gene/consequence tier. Missing population AF is unknown, not evidence of rarity. This is a review-order heuristic, not pathogenicity or somatic classification.</p>
 {variant_table_html}
 <script>
 (() => {{
@@ -437,12 +404,12 @@ h1{{margin:0 0 4px;font-size:28px}} h2{{margin:30px 0 8px;font-size:20px}} p{{ma
  function update() {{
    const query = search.value.trim().toLowerCase(), effect = consequence.value;
    let shown = 0;
-   for (const [i, row] of rows.entries()) {{
+ for (const row of rows) {{
      const matches = (!query || row.dataset.search.includes(query)) && (!effect || row.cells[3]?.textContent === effect);
-     row.style.display = matches && (query || effect || i < {args.top_variants}) ? '' : 'none';
+     row.style.display = matches ? '' : 'none';
      if (row.style.display !== 'none') shown++;
    }}
-   count.textContent = (query || effect ? 'Showing matching ' : 'Showing first ') + shown.toLocaleString() + ' of {len(coding):,} protein-altering variants';
+   count.textContent = (query || effect ? 'Showing matching ' : 'Showing all ') + shown.toLocaleString() + ' of {len(coding):,} protein-altering variants';
  }}
  search.addEventListener('input', update); consequence.addEventListener('change', update);
 }})();
@@ -451,8 +418,7 @@ h1{{margin:0 0 4px;font-size:28px}} h2{{margin:30px 0 8px;font-size:20px}} p{{ma
 <p>Major-event screen: absolute segment log2 ratio ≥ 0.30, interval ≥ 5 Mb, at least 10 bins when the field is available; segments with absolute log2 ratio &gt; 5 are flagged rather than summarized as events.</p>
 {cnv_table_html}
 <p class="small">CNVkit baseline: {escape(reference_mode)}. Segment deviations are not absolute copy-number calls. Review with matched/pooled normals and inspect the underlying CNVkit plots before interpreting.</p>
-<p class="small">MAF rows: {len(variants):,} unique records. Annotated VCF: <code>{vcf_name}</code>. Report generated from the existing CLAM outputs; not a clinical interpretation.</p>
-</body></html>"""
+</main></body></html>"""
     Path(args.output).write_text(document, encoding="utf-8")
 
 
