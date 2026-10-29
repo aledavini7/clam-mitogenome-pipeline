@@ -82,6 +82,7 @@ include { merge_variant_calls; annotation_mafs; mitomap_annotation } from './mod
 include { bam_qc; no_mitomap_report_table; no_numt_exploration_report_table; build_report } from './modules/10_qc_report.nf'
 include { numt_like_exploration } from './modules/11_numt_exploration.nf'
 include { nuclear_reference_index; nuclear_alignment; nuclear_prepare_bam; nuclear_tumor_only_call; nuclear_paired_call; nuclear_germline_call; nuclear_annotate; nuclear_cnvkit_flat; nuclear_cnvkit_paired; nuclear_report } from './modules/12_nuclear_wes.nf'
+include { nuclear_manta } from './modules/13_nuclear_sv.nf'
 
 process merge_fastq_lanes {
     tag "$sample_id"
@@ -152,6 +153,10 @@ workflow {
     }
     run_mt_analysis = analysis_target in ['mtDNA', 'both']
     run_nuclear_analysis = analysis_target in ['nDNA', 'both']
+    run_nuclear_manta = params.nuclear_run_manta != null && params.nuclear_run_manta.toString().toBoolean()
+    if (run_nuclear_manta && !run_nuclear_analysis) {
+        error "--nuclear_run_manta true requires --analysis_target nDNA or both"
+    }
 
     nuclear_calling_mode = (params.nuclear_calling_mode ?: 'tumor_only').toString().trim().toLowerCase()
     if (!(nuclear_calling_mode in ['tumor_only', 'paired', 'germline'])) {
@@ -343,6 +348,12 @@ workflow {
                 .combine(nuclear_bed_ch)
                 .map { sample_id, bam, bai, reference, reference_fai, target_bed -> tuple(sample_id, bam, bai, reference, target_bed) }
             nuclear_cnv_ch = nuclear_cnvkit_flat(nuclear_cnv_input_ch)
+            if (run_nuclear_manta) {
+                nuclear_manta_input_ch = nuclear_bams_ch
+                    .combine(nuclear_reference_ch)
+                    .map { sample_id, bam, bai, reference, reference_fai -> tuple(sample_id, 'germline', [bam], reference, reference_fai) }
+                nuclear_manta(nuclear_manta_input_ch)
+            }
         } else if (nuclear_calling_mode == 'paired') {
             manifest_rows = file(params.nuclear_sample_manifest).text.readLines()
                 .findAll { it.trim() && !it.trim().startsWith('#') }
@@ -393,6 +404,14 @@ workflow {
                     tuple(pair_id, tumor_id, tumor_bam, tumor_bai, normal_id, normal_bam, normal_bai, reference, reference_fai, target_bed)
                 }
             nuclear_cnv_ch = nuclear_cnvkit_paired(nuclear_cnv_input_ch)
+            if (run_nuclear_manta) {
+                nuclear_manta_input_ch = nuclear_pair_bams_ch
+                    .combine(nuclear_reference_ch)
+                    .map { pair_id, tumor_id, tumor_bam, tumor_bai, normal_id, normal_bam, normal_bai, reference, reference_fai ->
+                        tuple(tumor_id, 'paired', [tumor_bam, normal_bam], reference, reference_fai)
+                    }
+                nuclear_manta(nuclear_manta_input_ch)
+            }
         } else {
             nuclear_variants_ch = nuclear_tumor_only_call(nuclear_call_input_ch, nuclear_germline_resource_ch, nuclear_pon_ch)
             nuclear_cnv_input_ch = nuclear_bams_ch
@@ -400,6 +419,12 @@ workflow {
                 .combine(nuclear_bed_ch)
                 .map { sample_id, bam, bai, reference, reference_fai, target_bed -> tuple(sample_id, bam, bai, reference, reference_fai, target_bed) }
             nuclear_cnv_ch = nuclear_cnvkit_flat(nuclear_cnv_input_ch)
+            if (run_nuclear_manta) {
+                nuclear_manta_input_ch = nuclear_bams_ch
+                    .combine(nuclear_reference_ch)
+                    .map { sample_id, bam, bai, reference, reference_fai -> tuple(sample_id, 'tumor_only', [bam], reference, reference_fai) }
+                nuclear_manta(nuclear_manta_input_ch)
+            }
         }
 
         if (run_nuclear_annotation) {

@@ -121,6 +121,8 @@ HTML report. Re-enable it for annotated outputs. The BED remains an external inp
 Seqera file parameter; it is not vendored in this repository. Confirm that the
 BED describes the exact enrichment design used. Twist Exome 2.0 alone and
 Exome 2.0 plus Comprehensive Exome Spike-in have different target BEDs.
+The current IEO cluster reference, capture BED, VEP cache, and gnomAD paths are
+prefilled in the Launchpad schema and can be replaced at launch when needed.
 
 Choose one nuclear calling mode with `--nuclear_calling_mode`:
 
@@ -140,18 +142,24 @@ resource. The nDNA outputs include filtered
 VCFs, VEP-annotated VCFs, MAF-compatible tables, CNVkit results, and a per-sample
 HTML summary. The nuclear summary reports variant and protein-altering counts,
 target-bin mean/minimum/maximum depth when CNVkit coverage files are available,
-the first 100 prioritized protein-altering candidates by default, and broad CNV
-segment candidates. Search and consequence filters operate on the full
-protein-altering callset embedded in the report. The initial row count is
-configurable with `--nuclear_report_top_variants`. Its review-priority list
-includes more than 300 cancer, immune, hematologic, and constitutional-disease
-genes; it affects ranking only and never filters calls. When gnomAD annotation is supplied, calls at or above
+all protein-altering candidates in a searchable, scrollable table (ranked by a
+review-priority gene list), broad CNV segment candidates, and an embedded
+genome-wide CNVkit log2-ratio scatter plot. The plot is also saved as a PNG in
+the CNVkit output folder. Its review-priority list includes more than 300
+cancer, immune, hematologic, and constitutional-disease genes; it affects
+ranking only and never filters calls. When gnomAD annotation is supplied, calls at or above
 `--nuclear_common_af_threshold` (default 1%) are flagged as common and ranked
 lower within the same gene/consequence tier; they remain in the MAF. This
 population-frequency screen does not establish somatic status or pathogenicity.
 The priority label is a review heuristic; tumor-only PASS calls are not
 confirmed somatic variants, and flat-reference CNV results are exploratory.
-Structural-variant calling is not included in this initial WES branch.
+Optional Manta structural-variant calling is enabled with
+`--nuclear_run_manta true` and runs in the separate `clam-manta` container. It
+publishes VCFs and indexes under
+`results/<sample_id>/nuclear/sv/manta_out/`. Manta is run in exome mode on
+primary GRCh38 chromosomes; WES has limited breakpoint evidence, so treat these
+calls as candidates for review rather than a complete structural-variant
+survey. Tumor-only mode produces unscored candidate calls.
 
 The mtDNA HTML report includes all calls in a searchable table, confidence,
 caller, MITOMAP, and gene/region filters, plus confidence colors and one-caller
@@ -223,6 +231,7 @@ using Docker/OCI images as the source:
 | `ghcr.io/aledavini7/clam-mutect2:0.1.0` | GATK4/Mutect2 runtime. |
 | `ghcr.io/aledavini7/clam-annotation:0.1.1` | Lightweight Python runtime for mitochondrial variant summary and heteroplasmy tables. |
 | `ghcr.io/aledavini7/clam-nuclear:0.1.0` | BWA-MEM2, samtools, CNVkit, Ensembl VEP 112, and Python for nuclear WES. |
+| `ghcr.io/aledavini7/clam-manta:0.1.0` | Pinned Manta and HTSlib runtime for optional WES structural-variant calling. |
 
 Both images are built for `linux/amd64`.
 MitoScape runs in its own Java 8 container because its bundled Spark/Scala
@@ -235,6 +244,7 @@ Container build definitions live in:
 - `containers/mutect2/`
 - `containers/annotation/`
 - `containers/nuclear/`
+- `containers/manta/`
 
 The GitHub Actions workflow in `.github/workflows/build-clam-core.yml` builds
 and publishes the container images to GHCR.
@@ -249,8 +259,10 @@ implementation remains traceable.
 ## Seqera Launchpad
 
 The repository includes `nextflow_schema.json` in the root directory. Seqera
-uses this file to build the Launchpad parameter form for `input`, `input_type`,
-`analysis_mode`, and `outdir`.
+uses this file to build the Launchpad parameter form. The external nuclear
+reference, target BED, VEP cache, and gnomAD VCF/index are prefilled with the
+current IEO cluster paths; edit them for a different cluster or assay. The
+optional `nuclear_run_manta` switch defaults to false.
 
 Suggested Launchpad settings for the first test runs:
 

@@ -1,0 +1,7 @@
+name: clam-manta
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - manta=1.6.0
+  - htslib=1.20

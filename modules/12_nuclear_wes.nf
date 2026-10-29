@@ -254,6 +254,13 @@ process nuclear_cnvkit_flat {
         cnvkit.py call \$cns -o \${cns%.cns}.call.cns
         cnvkit.py export seg \${cns%.cns}.call.cns -o \${cns%.cns}.seg
     done
+    for cnr in cnvkit_out/*.cnr; do
+        [[ -f "\$cnr" ]] || continue
+        cns="\${cnr%.cnr}.call.cns"
+        [[ -s "\$cns" ]] || continue
+        plot="\${cnr%.cnr}.scatter.png"
+        cnvkit.py scatter "\$cnr" -s "\$cns" -o "\$plot" --title "${sample_id} genome-wide log2 copy ratio"
+    done
     """
 }
 
@@ -278,6 +285,13 @@ process nuclear_cnvkit_paired {
     for cns in cnvkit_out/*.cns; do
         cnvkit.py call \$cns -o \${cns%.cns}.call.cns
         cnvkit.py export seg \${cns%.cns}.call.cns -o \${cns%.cns}.seg
+    done
+    for cnr in cnvkit_out/*.cnr; do
+        [[ -f "\$cnr" ]] || continue
+        cns="\${cnr%.cnr}.call.cns"
+        [[ -s "\$cns" ]] || continue
+        plot="\${cnr%.cnr}.scatter.png"
+        cnvkit.py scatter "\$cnr" -s "\$cns" -o "\$plot" --title "${tumor_id} genome-wide log2 copy ratio"
     done
     """
 }

@@ -13,6 +13,7 @@ on:
       - containers/mitoscape/**
       - containers/mutect2/**
       - containers/nuclear/**
+      - containers/manta/**
       - .github/workflows/build-clam-core.yml
 
 env:
@@ -44,6 +45,9 @@ jobs:
             version: 0.1.1
           - name: clam-nuclear
             context: containers/nuclear
+            version: 0.1.0
+          - name: clam-manta
+            context: containers/manta
             version: 0.1.0
 
     steps:

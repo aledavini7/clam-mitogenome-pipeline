@@ -2,6 +2,7 @@
 """Build a concise, prioritization-oriented HTML summary for nuclear WES."""
 
 import argparse
+import base64
 import csv
 import html
 import math
@@ -287,6 +288,19 @@ def main():
     candidate_segments.sort(key=lambda segment: (-segment["length"], -abs(segment["mean"])))
     reference_mode = "paired/reference CNVkit baseline" if list(cnv_dir.glob("paired_reference.cnn")) else "flat CNVkit baseline (single-sample exploratory)"
     coverage = target_coverage(cnv_dir)
+    scatter_plots = sorted(cnv_dir.glob("*.scatter.png"))
+    if scatter_plots:
+        scatter_figures = "".join(
+            '<figure class="cnv-plot"><img src="data:image/png;base64,'
+            + base64.b64encode(plot.read_bytes()).decode("ascii")
+            + '" alt="CNVkit genome-wide log2 copy-ratio scatter plot for '
+            + escape(plot.name)
+            + '"><figcaption>' + escape(plot.name.replace(".scatter.png", ""))
+            + " — genome-wide log2 copy ratio</figcaption></figure>"
+            for plot in scatter_plots
+        )
+    else:
+        scatter_figures = '<p class="small">No CNVkit scatter plot was found in the supplied CNV results.</p>'
 
     variant_table_rows = []
     for row_index, row in enumerate(coding):
@@ -384,6 +398,7 @@ main{{max-width:1220px;margin:0 auto;padding:24px 24px 44px}} h2{{margin:30px 0 
 .notice{{border-left:4px solid #d97706;background:var(--amber);padding:12px 16px;margin:18px 0;border-radius:4px}} .notice ul{{margin:4px 0 0;padding-left:20px}} .notice li{{margin:4px 0}}
 .table-wrap{{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:8px;margin:10px 0 20px}} table{{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}} th,td{{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left}} #nuclear-variants td:first-child{{white-space:nowrap}} th{{position:sticky;top:0;background:#edf2f7;z-index:1}} tr:last-child td{{border-bottom:0}} #nuclear-variants tbody tr:not(.watchlist){{background:#f8fafc}} .watchlist{{background:#eff6ff}} .empty{{padding:16px;color:var(--muted)}}
 .table-controls{{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin:12px 0}} .table-controls label{{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}} .table-controls input,.table-controls select{{padding:8px;border:1px solid var(--line);border-radius:6px;min-width:220px}} .table-controls span{{font-size:12px;color:var(--muted)}}
+.cnv-plot{{margin:14px 0 22px;padding:12px;border:1px solid var(--line);border-radius:8px;background:#fff}} .cnv-plot img{{display:block;width:100%;height:auto}} .cnv-plot figcaption{{margin-top:7px;font-size:12px;color:var(--muted)}}
 .small{{font-size:12px;color:var(--muted)}} .badge{{display:inline-block;border-radius:99px;background:#dbeafe;color:#1e40af;padding:2px 8px;font-size:11px;font-weight:650}}
 @media print{{body{{max-width:none;padding:0}} .table-wrap{{overflow:visible}} table{{white-space:normal}} th{{position:static}}}}
 </style></head><body>
@@ -416,6 +431,8 @@ main{{max-width:1220px;margin:0 auto;padding:24px 24px 44px}} h2{{margin:30px 0 
 </script>
 <h2>CNV overview</h2><p>{escape(cnv_status)}</p>
 <p>Major-event screen: absolute segment log2 ratio ≥ 0.30, interval ≥ 5 Mb, at least 10 bins when the field is available; segments with absolute log2 ratio &gt; 5 are flagged rather than summarized as events.</p>
+<h3>Genome-wide CNVkit log2 ratio</h3>
+{scatter_figures}
 {cnv_table_html}
 <p class="small">CNVkit baseline: {escape(reference_mode)}. Segment deviations are not absolute copy-number calls. Review with matched/pooled normals and inspect the underlying CNVkit plots before interpreting.</p>
 </main></body></html>"""

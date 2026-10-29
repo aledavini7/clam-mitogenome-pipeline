@@ -44,12 +44,14 @@
     "nuclear_reference": {
       "type": "string",
       "format": "file-path",
-      "description": "External GRCh38 FASTA path, required for nDNA or both. Use the FASTA build matching the WES BED and input BAMs."
+      "description": "External GRCh38 FASTA path, required for nDNA or both. Use the FASTA build matching the WES BED and input BAMs.",
+      "default": "/hpcnfs/scratch/ED/genome/clam_refs/GRCh38_gencode49/GRCh38.primary_assembly.genome.fa"
     },
     "nuclear_target_bed": {
       "type": "string",
       "format": "file-path",
-      "description": "External capture target BED path, required for nDNA or both. For the current assay, provide the Twist Exome 2.0 plus Comprehensive Exome spike-in hg38 BED through Seqera; this BED is intentionally not bundled in the repository."
+      "description": "External capture target BED path, required for nDNA or both. For the current assay, provide the Twist Exome 2.0 plus Comprehensive Exome spike-in hg38 BED through Seqera; this BED is intentionally not bundled in the repository.",
+      "default": "/hpcnfs/scratch/ED/genome/clam_refs/twist_exome_2_bed/hg38_exome_comp_spikein_v2.0.2_targets_sorted.re_annotated.bed"
     },
     "nuclear_sample_manifest": {
       "type": "string",
@@ -59,7 +61,8 @@
     "nuclear_vep_cache": {
       "type": "string",
       "format": "directory-path",
-      "description": "External offline Ensembl VEP cache directory for GRCh38, required when nuclear_annotate is true."
+      "description": "External offline Ensembl VEP cache directory for GRCh38, required when nuclear_annotate is true.",
+      "default": "/beegfs/scratch/ieo5898/references/vep_112_GRCh38_cache"
     },
     "nuclear_annotate": {
       "type": "boolean",
@@ -89,12 +92,19 @@
     "nuclear_gnomad_vcf": {
       "type": "string",
       "format": "file-path",
-      "description": "Optional indexed GRCh38 gnomAD VCF for VEP custom annotation. Provide its .tbi file as nuclear_gnomad_tbi."
+      "description": "Optional indexed GRCh38 gnomAD VCF for VEP custom annotation. Provide its .tbi file as nuclear_gnomad_tbi.",
+      "default": "/beegfs/scratch/ieo5898/references/gnomad_af_GRCh38/af-only-gnomad.hg38.vcf.gz"
     },
     "nuclear_gnomad_tbi": {
       "type": "string",
       "format": "file-path",
-      "description": "Tabix index corresponding to nuclear_gnomad_vcf."
+      "description": "Tabix index corresponding to nuclear_gnomad_vcf.",
+      "default": "/beegfs/scratch/ieo5898/references/gnomad_af_GRCh38/af-only-gnomad.hg38.vcf.gz.tbi"
+    },
+    "nuclear_run_manta": {
+      "type": "boolean",
+      "description": "Optionally run Manta structural-variant calling on GRCh38 WES alignments and publish SV VCF outputs under each sample's nuclear/sv folder. Tumor-only calls are unscored candidates.",
+      "default": false
     },
     "nuclear_common_af_threshold": {
       "type": "number",
@@ -161,6 +171,12 @@
       "description": "Container with BWA-MEM2, samtools, CNVkit, and offline VEP runtime.",
       "hidden": true
     },
+    "manta_container": {
+      "type": "string",
+      "default": "docker://ghcr.io/aledavini7/clam-manta:0.1.0",
+      "description": "Separate container image for Manta structural-variant calling.",
+      "hidden": true
+    },
     "annotation_high_depth": {
       "type": "integer",
       "default": 100,
@@ -212,7 +228,8 @@
     "mitomap_variant_table": {
       "type": "string",
       "format": "file-path",
-      "description": "Optional local MITOMAP-derived variant table used to annotate CLAM TSV outputs. When unset, MITOMAP annotation is skipped."
+      "description": "Optional local MITOMAP-derived variant table used to annotate CLAM TSV outputs. When unset, MITOMAP annotation is skipped.",
+      "default": "/hpcnfs/scratch/ED/genome/clam_refs/MITOMAP/mitomap_polymorphisms_20260522.clam.tsv"
     },
     "mitomap_keep_columns": {
       "type": "integer",
