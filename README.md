@@ -138,8 +138,35 @@ plus optional gnomAD and COSMIC VCF paths, can be supplied separately with
 their matching `.tbi` indexes. COSMIC requires an appropriately licensed
 resource. The nDNA outputs include filtered
 VCFs, VEP-annotated VCFs, MAF-compatible tables, CNVkit results, and a per-sample
-HTML summary. Structural-variant calling is not included in this initial WES
-branch.
+HTML summary. The nuclear summary reports variant and protein-altering counts,
+target-bin mean/minimum/maximum depth when CNVkit coverage files are available,
+the first 100 prioritized protein-altering candidates by default, and broad CNV
+segment candidates. Search and consequence filters operate on the full
+protein-altering callset embedded in the report. The initial row count is
+configurable with `--nuclear_report_top_variants`. Its review-priority list
+includes more than 300 cancer, immune, hematologic, and constitutional-disease
+genes; it affects ranking only and never filters calls. When gnomAD annotation is supplied, calls at or above
+`--nuclear_common_af_threshold` (default 1%) are flagged as common and ranked
+lower within the same gene/consequence tier; they remain in the MAF. This
+population-frequency screen does not establish somatic status or pathogenicity.
+The priority label is a review heuristic; tumor-only PASS calls are not
+confirmed somatic variants, and flat-reference CNV results are exploratory.
+Structural-variant calling is not included in this initial WES branch.
+
+The mtDNA HTML report includes all calls in a searchable table, confidence,
+caller, MITOMAP, and gene/region filters, plus confidence colors and one-caller
+highlighting. Exact MITOMAP matches show a full-length GenBank frequency as a
+percentage and its supporting count/denominator. The default denominator of
+65,286 matches the 2026-05-22 MITOMAP table; set `--mitomap_gb_denominator` to
+the full-length sequence count for another snapshot. Position-only matches do
+not receive an allele-specific frequency. The supplied MITOMAP table does not
+provide per-variant haplogroup specificity; the report shows HaploGrep's
+sample-level assignment separately.
+
+To rebuild the mtDNA report from an existing result folder without rerunning
+the pipeline, run `bin/rebuild_mt_report_from_results.sh [result-folder]
+[sample-id]`. For nDNA, use `bin/rebuild_nuclear_report_from_launchdir.sh` after
+copying it and `clam_build_nuclear_report.py` into the Nextflow launch folder.
 
 Example nuclear-only run (replace every example path with an accessible path):
 

@@ -108,15 +108,22 @@ def collapse_values(rows, columns):
 
 
 def choose_columns(fieldnames, limit):
-    selected = []
+    candidates = []
     for field in fieldnames:
         normalized = normalize_header(field)
         if normalized in POSITION_ALIASES | REF_ALIASES | ALT_ALIASES | VARIANT_ALIASES:
             continue
-        selected.append(field)
-        if len(selected) >= limit:
-            break
-    return selected
+        candidates.append(field)
+    # Preserve the fields needed to interpret population prevalence and
+    # lineage specificity before optional descriptive columns.
+    priority = [
+        field for field in candidates
+        if any(token in normalize_header(field) for token in (
+            "gbfreq", "gbseq", "frequency", "freq", "haplogroup", "haplo", "denominator"
+        ))
+    ]
+    selected = list(dict.fromkeys(priority + candidates))
+    return selected[:limit]
 
 
 def mitomap_record_keys(row):

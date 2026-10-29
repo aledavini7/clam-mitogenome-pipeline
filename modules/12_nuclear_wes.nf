@@ -297,6 +297,8 @@ process nuclear_report {
     """
     python3 ${projectDir}/bin/clam_build_nuclear_report.py \
         --sample-id $sample_id --calling-mode $calling_mode --vcf $annotated_vcf --maf $maf \
-        --cnv-dir $cnvkit_out --output ${sample_id}_nuclear_report.html
+        --cnv-dir $cnvkit_out --common-af-threshold ${params.nuclear_common_af_threshold} \
+        --top-variants ${params.nuclear_report_top_variants} \
+        --output ${sample_id}_nuclear_report.html
     """
 }

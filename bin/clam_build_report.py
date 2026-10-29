@@ -8,6 +8,29 @@ from pathlib import Path
 
 
 CONFIDENCE_ORDER = {"HIGH": 0, "MEDIUM": 1, "LOW": 2, "": 3}
+MT_FEATURES = [
+    (1, 576, "D-loop"), (577, 647, "MT-TF"), (648, 1601, "MT-RNR1"),
+    (1602, 1670, "MT-TV"), (1671, 3229, "MT-RNR2"), (3230, 3304, "MT-TL1"),
+    (3307, 4262, "MT-ND1"), (4263, 4331, "MT-TI"), (4329, 4400, "MT-TQ"),
+    (4402, 4469, "MT-TM"), (4470, 5511, "MT-ND2"), (5512, 5579, "MT-TW"),
+    (5587, 5655, "MT-TA"), (5657, 5729, "MT-TN"), (5761, 5826, "MT-TC"),
+    (5826, 5891, "MT-TY"), (5904, 7445, "MT-CO1"), (7446, 7514, "MT-TS1"),
+    (7518, 7585, "MT-TD"), (7586, 8269, "MT-CO2"), (8295, 8364, "MT-TK"),
+    (8366, 8572, "MT-ATP8"), (8527, 9207, "MT-ATP6"), (9207, 9990, "MT-CO3"),
+    (9991, 10058, "MT-TG"), (10059, 10404, "MT-ND3"), (10405, 10469, "MT-TR"),
+    (10470, 10766, "MT-ND4L"), (10760, 12137, "MT-ND4"), (12138, 12206, "MT-TH"),
+    (12207, 12265, "MT-TS2"), (12266, 12336, "MT-TL2"), (12337, 14148, "MT-ND5"),
+    (14149, 14673, "MT-ND6"), (14674, 14742, "MT-TE"), (14747, 15887, "MT-CYB"),
+    (15888, 15953, "MT-TT"), (15956, 16023, "MT-TP"), (16024, 16569, "D-loop"),
+]
+
+
+def mitochondrial_gene(position):
+    pos = as_int(position)
+    if pos is None:
+        return "Unknown"
+    hits = [name for start, end, name in MT_FEATURES if start <= pos <= end]
+    return " / ".join(dict.fromkeys(hits)) if hits else "Intergenic"
 
 
 def as_bool(value):
@@ -258,8 +281,15 @@ def simple_table(headers, rows, css_class="compact-table"):
     """
 
 
-def top_variant_rows(rows, limit=25):
-    selected = sorted(rows, key=lambda row: (as_int(row.get("position")) or 0, row.get("ref", ""), row.get("alt", "")))[:limit]
+def top_variant_rows(rows, limit=None):
+    selected = sorted(rows, key=lambda row: (
+        CONFIDENCE_ORDER.get(row.get("confidence_tier", ""), 3),
+        as_int(row.get("position")) if as_int(row.get("position")) is not None else float("inf"),
+        row.get("ref", ""), row.get("alt", ""),
+        0 if row.get("callers", "") == "both" else 1,
+    ))
+    if limit is not None:
+        selected = selected[:limit]
     table_rows = []
     for row in selected:
         table_rows.append(
@@ -279,10 +309,81 @@ def top_variant_rows(rows, limit=25):
                 row.get("consensus_heteroplasmy_pct_0_100", ""),
                 row.get("mitomap_match", ""),
                 row.get("mitomap_match_type", ""),
+                row.get("mitomap_gbfreq", ""),
                 short_text(row.get("confidence_reason", ""), 60),
             ]
         )
     return table_rows
+
+
+def mitomap_frequency_display(raw_counts, match, match_type, denominator):
+    if match != "YES":
+        return "NA"
+    if not raw_counts:
+        return "NA"
+
+    values = []
+    for item in str(raw_counts).split("||"):
+        token = item.strip()
+        if not token:
+            continue
+        try:
+            count = float(token)
+        except ValueError:
+            continue
+        if count < 0:
+            continue
+        pct_value = count / denominator * 100
+        label = f"{pct_value:.3f}% ({count:g}/{denominator:,})"
+        if label not in values:
+            values.append(label)
+    if not values:
+        return "NA"
+    if match_type != "exact":
+        return "Position only"
+    return "; ".join(values)
+
+
+def compact_allele(value, max_bases=5):
+    value = str(value)
+    return value if len(value) <= max_bases else value[:max_bases] + "..."
+
+
+def interactive_variant_table(rows, gb_denominator):
+    headers = ["Position", "Ref", "Alt", "Gene / region", "Callers", "Confidence",
+               "BAM coverage", "Mutect2 depth", "Mutect2 ALT", "Mutect2 het %",
+               "mutserve depth", "mutserve ALT", "mutserve het %", "Mean caller het %",
+               "MITOMAP", "MITOMAP match", f"MITOMAP frequency (% FL; n/{gb_denominator:,})",
+               "Reason"]
+    variants = top_variant_rows(rows)
+    out_rows = []
+    for idx, values in enumerate(variants):
+        confidence, callers, match = values[4], values[3], values[13]
+        cls = {"HIGH": "confidence-high", "MEDIUM": "confidence-medium", "LOW": "confidence-low"}.get(confidence, "confidence-unscored")
+        if callers != "mutect2,mutserve":
+            cls += " single-caller"
+        frequency_display = mitomap_frequency_display(values[15], values[13], values[14], gb_denominator)
+        searchable = " ".join(str(value) for value in values).lower()
+        gene = mitochondrial_gene(values[0])
+        # Keep the region beside the allele so a reader sees the affected gene
+        # without scrolling across the annotation columns.
+        display_values = values[:2] + [compact_allele(values[2])] + [gene] + values[3:15] + [frequency_display, values[16]]
+        searchable = (searchable + " " + gene + " " + frequency_display).lower()
+        cells = "".join(
+            f'<td title="Full ALT: {esc(values[2])}">{esc(value)}</td>' if cell_index == 2
+            else f'<td>{esc(value)}</td>'
+            for cell_index, value in enumerate(display_values)
+        )
+        out_rows.append(f'<tr class="{cls}" data-search="{esc(searchable)}" data-confidence="{esc(confidence)}" data-callers="{esc(callers)}" data-mitomap="{esc(match)}" data-gene="{esc(gene)}">{cells}</tr>')
+    genes = sorted({mitochondrial_gene(row[0]) for row in variants})
+    return f'''<div class="table-controls">
+<label>Search variants <input id="mt-search" type="search" placeholder="Position, allele, caller, MITOMAP ID"></label>
+<label>Confidence <select id="mt-confidence"><option value="">All tiers</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option><option value="other">Unscored</option></select></label>
+<label>Caller support <select id="mt-callers"><option value="">All caller support</option><option value="mutect2,mutserve">Both callers</option><option value="mutect2">Mutect2 only</option><option value="mutserve">mutserve only</option></select></label>
+<label>MITOMAP <select id="mt-mitomap"><option value="">All MITOMAP states</option><option>YES</option><option>NO</option></select></label>
+<label>Gene / region <select id="mt-gene"><option value="">All mtDNA genes / regions</option>{''.join(f'<option>{esc(gene)}</option>' for gene in genes)}</select></label>
+<span id="mt-count">Showing all {len(variants):,} variants</span></div>
+<div class="table-wrap"><table id="mt-variants"><thead><tr>{''.join(f'<th>{esc(h)}</th>' for h in headers)}</tr></thead><tbody>{''.join(out_rows) if out_rows else f'<tr><td colspan="{len(headers)}">No mitochondrial variants found.</td></tr>'}</tbody></table></div>'''
 
 
 def top_numt_contig_rows(rows, limit=10):
@@ -361,7 +462,7 @@ def build_html(args, data):
     before_bam = bam_qc.get("before", {})
 
     cards = [
-        metric_card("Analysis Mode", analysis_mode_label, f"{args.analysis_mode} | Reference: {args.reference_set}"),
+        metric_card("NUMT correction", "YES" if as_bool(args.run_numt_correction) else "NO", ""),
         metric_card("Final Mean Depth", num(final_cov["mean_depth"], 1), f"Median {num(final_cov['median_depth'], 1)}"),
         metric_card("Breadth >=30x", pct(final_cov["breadth_30x"], 1), f"Covered bases: {final_cov['covered_bases']}"),
         metric_card("Filtered Calls", filtered["count"], f"HIGH {high} | MEDIUM {medium}"),
@@ -439,23 +540,6 @@ def build_html(args, data):
         ["Mutect2 filtered", data["filtered_mutect2_vcf"]["records"], vcf_filter_summary(data["filtered_mutect2_vcf"])],
         ["mutserve", mutserve_vcf["records"], vcf_filter_summary(mutserve_vcf)],
     ]
-
-    warnings = []
-    if final_cov["breadth_30x"] is not None and final_cov["breadth_30x"] < 95:
-        warnings.append(f"Final mtDNA breadth >=30x is {pct(final_cov['breadth_30x'], 1)}; inspect low-coverage intervals.")
-    if mutect2_haplo["haplogroup"] != "NA" and mutserve_haplo["haplogroup"] != "NA" and mutect2_haplo["haplogroup"] != mutserve_haplo["haplogroup"]:
-        warnings.append("Mutect2 and mutserve HaploGrep assignments differ; review caller-specific VCFs and coverage.")
-    if numt_exploration["enabled"]:
-        high_mapq = as_int(numt_exploration["summary"].get("rejected_nuclear_high_mapq_alignments")) or 0
-        warnings.append(
-            "NUMT-like exploration is exploratory: MitoScape-rejected reads are not confirmed NUMT insertions without breakpoint-level support, clustering, and orthogonal validation."
-        )
-        if high_mapq > 0:
-            warnings.append(
-                f"{high_mapq} MitoScape-rejected nuclear alignments meet the configured high-MAPQ threshold; review the NUMT exploration tables before interpretation."
-            )
-    if not warnings:
-        warnings.append("No automatic QC warnings were triggered by the first-pass CLAM report rules.")
 
     output_links = [
         ["BAMs", "../bams/"],
@@ -619,6 +703,14 @@ def build_html(args, data):
       font-size: 12px;
       text-transform: uppercase;
     }}
+    .table-wrap {{ overflow-x: auto; max-height: 70vh; }}
+    .table-controls {{ display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin: 12px 0; }}
+    .table-controls label {{ display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }}
+    .table-controls input, .table-controls select {{ padding: 8px; border: 1px solid var(--line); border-radius: 6px; min-width: 165px; background: white; }}
+    .table-controls span {{ color: var(--muted); font-size: 12px; }}
+    .confidence-high {{ background: #ecfdf5; }} .confidence-medium {{ background: #fffbeb; }} .confidence-low {{ background: #fef2f2; }}
+    .confidence-unscored {{ background: #f1f5f9; }} .single-caller td:nth-child(5) {{ font-weight: 700; color: #9a3412; }}
+    #mt-variants td:nth-child(4) {{ white-space: nowrap; }}
     .notice {{
       background: #fff7ed;
       border: 1px solid #fed7aa;
@@ -637,16 +729,11 @@ def build_html(args, data):
 <body>
   <header>
     <h1>CLAM Mitochondrial Report</h1>
-    <p>Sample {esc(args.sample_id)} | {esc(analysis_mode_label)} | {esc(args.reference_set)}</p>
+    <p>Sample {esc(args.sample_id)} | Reference: {esc(args.reference_set)}</p>
   </header>
   <main>
     <section class="metrics">
       {''.join(cards)}
-    </section>
-
-    <section>
-      <h2>QC Notes</h2>
-      {''.join(f'<div class="notice">{esc(item)}</div>' for item in warnings)}
     </section>
 
     <section class="grid-2">
@@ -684,8 +771,8 @@ def build_html(args, data):
     </section>
 
     <section class="panel">
-      <h2>Top Filtered Variants</h2>
-      {simple_table(["Position", "Ref", "Alt", "Callers", "Confidence", "BAM coverage", "Mutect2 depth", "Mutect2 ALT", "Mutect2 het %", "mutserve depth", "mutserve ALT", "mutserve het %", "Mean caller het %", "MITOMAP", "MITOMAP type", "Reason"], top_variant_rows(data["top_rows"]))}
+      <h2>Mitochondrial variants</h2>
+      {interactive_variant_table(data["top_rows"], args.mitomap_gb_denominator)}
     </section>
 
     {numt_section}
@@ -695,6 +782,26 @@ def build_html(args, data):
       {simple_table(["Category", "Relative path"], output_links)}
     </section>
   </main>
+  <script>
+  (() => {{
+    const table = document.getElementById('mt-variants'); if (!table) return;
+    const rows = [...table.querySelectorAll('tbody tr')];
+    const search = document.getElementById('mt-search'), confidence = document.getElementById('mt-confidence');
+    const callers = document.getElementById('mt-callers'), mitomap = document.getElementById('mt-mitomap'), gene = document.getElementById('mt-gene'), count = document.getElementById('mt-count');
+    function update() {{
+      const q = search.value.trim().toLowerCase(), tier = confidence.value, caller = callers.value, match = mitomap.value, geneFilter = gene.value;
+      let shown = 0;
+      rows.forEach((row, i) => {{
+        const scored = row.dataset.confidence || '';
+        const ok = (!q || row.dataset.search.includes(q)) && (!tier || (tier === 'other' ? !['HIGH','MEDIUM','LOW'].includes(scored) : scored === tier)) && (!caller || row.dataset.callers === caller) && (!match || row.dataset.mitomap === match) && (!geneFilter || row.dataset.gene === geneFilter);
+        row.style.display = ok ? '' : 'none';
+        if (row.style.display !== 'none') shown++;
+      }});
+      count.textContent = `Showing ${{shown.toLocaleString()}} of {len(data["top_rows"]):,} variants`;
+    }}
+    [search, confidence, callers, mitomap, gene].forEach(el => el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', update));
+  }})();
+  </script>
 </body>
 </html>
 """
@@ -724,6 +831,9 @@ def main():
     parser.add_argument("--confidence-filtered-tsv", required=True)
     parser.add_argument("--has-mitomap", required=True)
     parser.add_argument("--mitomap-confidence-tsv", required=True)
+    parser.add_argument("--mitomap-all-tsv", required=True)
+    parser.add_argument("--mitomap-gb-denominator", type=int, default=65286,
+                        help="Full-length GenBank sequence count for this MITOMAP snapshot (default: 65,286 for the 2026-05-22 table).")
     parser.add_argument("--has-numt-exploration", required=True)
     parser.add_argument("--numt-summary-tsv", required=True)
     parser.add_argument("--numt-contig-tsv", required=True)
@@ -731,12 +841,14 @@ def main():
     parser.add_argument("--output-html", required=True)
     parser.add_argument("--output-qc", required=True)
     args = parser.parse_args()
+    if args.mitomap_gb_denominator < 1:
+        parser.error("--mitomap-gb-denominator must be a positive integer")
 
     all_rows = read_tsv(args.all_tsv)
     filtered_rows = read_tsv(args.confidence_filtered_tsv)
     mitomap_enabled = as_bool(args.has_mitomap)
-    mitomap_rows = read_tsv(args.mitomap_confidence_tsv) if mitomap_enabled else []
-    top_rows = mitomap_rows if mitomap_enabled else filtered_rows
+    mitomap_rows = read_tsv(args.mitomap_all_tsv) if mitomap_enabled else []
+    top_rows = mitomap_rows if mitomap_enabled else all_rows
     numt_exploration_enabled = as_bool(args.has_numt_exploration)
     numt_summary_rows = read_tsv(args.numt_summary_tsv) if numt_exploration_enabled else []
     numt_contig_rows = read_tsv(args.numt_contig_tsv) if numt_exploration_enabled else []

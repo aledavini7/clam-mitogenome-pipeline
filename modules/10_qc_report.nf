@@ -45,11 +45,12 @@ process no_mitomap_report_table {
         path(confidence_filtered_tsv)
 
     output:
-    tuple val(sample_id), val(false), path("${sample_id}_mitomap_not_requested.tsv")
+    tuple val(sample_id), val(false), path("${sample_id}_mitomap_all_not_requested.tsv"), path("${sample_id}_mitomap_not_requested.tsv")
 
     script:
     """
-    printf "mitomap_match\\tmitomap_match_type\\n" > ${sample_id}_mitomap_not_requested.tsv
+    printf "mitomap_match\\tmitomap_match_type\\n" > ${sample_id}_mitomap_all_not_requested.tsv
+    cp ${sample_id}_mitomap_all_not_requested.tsv ${sample_id}_mitomap_not_requested.tsv
     """
 
 }
@@ -99,6 +100,7 @@ process build_report {
         path(all_tsv),
         path(confidence_filtered_tsv),
         val(has_mitomap),
+        path(mitomap_all_tsv),
         path(mitomap_confidence_tsv),
         val(has_numt_exploration),
         path(numt_summary_tsv),
@@ -134,7 +136,9 @@ process build_report {
         --all-tsv "$all_tsv" \\
         --confidence-filtered-tsv "$confidence_filtered_tsv" \\
         --has-mitomap "$has_mitomap" \\
+        --mitomap-all-tsv "$mitomap_all_tsv" \\
         --mitomap-confidence-tsv "$mitomap_confidence_tsv" \\
+        --mitomap-gb-denominator "$params.mitomap_gb_denominator" \\
         --has-numt-exploration "$has_numt_exploration" \\
         --numt-summary-tsv "$numt_summary_tsv" \\
         --numt-contig-tsv "$numt_contig_tsv" \\

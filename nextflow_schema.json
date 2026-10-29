@@ -96,6 +96,19 @@
       "format": "file-path",
       "description": "Tabix index corresponding to nuclear_gnomad_vcf."
     },
+    "nuclear_common_af_threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "default": 0.01,
+      "description": "Population AF at or above which gnomAD variants are flagged as common and ranked lower in the report. This does not remove variants or classify them as germline."
+    },
+    "nuclear_report_top_variants": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 100,
+      "description": "Number of prioritized protein-altering variants shown initially in the nuclear report. Search and consequence filters access the full protein-altering callset embedded in the report."
+    },
     "nuclear_cosmic_vcf": {
       "type": "string",
       "format": "file-path",
@@ -207,6 +220,12 @@
       "minimum": 0,
       "description": "Maximum number of non-coordinate columns copied from the MITOMAP table into annotated TSVs.",
       "hidden": true
+    },
+    "mitomap_gb_denominator": {
+      "type": "integer",
+      "default": 65286,
+      "minimum": 1,
+      "description": "Full-length GenBank sequence count for the supplied MITOMAP frequency snapshot. Default 65,286 matches the 2026-05-22 MITOMAP table; update this value for a different MITOMAP snapshot."
     },
     "run_numt_exploration": {
       "type": "boolean",

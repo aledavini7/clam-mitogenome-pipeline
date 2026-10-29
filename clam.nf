@@ -232,6 +232,7 @@ workflow {
         ['annotation_high_alt_reads', params.annotation_high_alt_reads, 1],
         ['annotation_medium_alt_reads', params.annotation_medium_alt_reads, 1],
         ['mitomap_keep_columns', params.mitomap_keep_columns, 0],
+        ['mitomap_gb_denominator', params.mitomap_gb_denominator, 1],
         ['report_mt_length', params.report_mt_length, 1],
         ['numt_exploration_min_mapq', params.numt_exploration_min_mapq, 0],
         ['numt_exploration_cluster_window', params.numt_exploration_cluster_window, 1],
@@ -518,7 +519,7 @@ workflow {
 
         mitomap_annotation_ch = mitomap_annotation(mitomap_input_ch)
         mitomap_annotation_ch
-            .map { sample_id, mutect2_mitomap_tsv, mutserve_mitomap_tsv, all_mitomap_tsv, confidence_mitomap_tsv -> [sample_id, true, confidence_mitomap_tsv] }
+            .map { sample_id, mutect2_mitomap_tsv, mutserve_mitomap_tsv, all_mitomap_tsv, confidence_mitomap_tsv -> [sample_id, true, all_mitomap_tsv, confidence_mitomap_tsv] }
             .set { mitomap_report_ch }
     } else {
         mitomap_report_ch = no_mitomap_report_table(variant_summary_ch)
