@@ -231,7 +231,7 @@ using Docker/OCI images as the source:
 | `ghcr.io/aledavini7/clam-mutect2:0.1.0` | GATK4/Mutect2 runtime. |
 | `ghcr.io/aledavini7/clam-annotation:0.1.1` | Lightweight Python runtime for mitochondrial variant summary and heteroplasmy tables. |
 | `ghcr.io/aledavini7/clam-nuclear:0.1.0` | BWA-MEM2, samtools, CNVkit, Ensembl VEP 112, and Python for nuclear WES. |
-| `ghcr.io/aledavini7/clam-manta:0.1.0` | Pinned Manta and HTSlib runtime for optional WES structural-variant calling. |
+| `ghcr.io/aledavini7/clam-manta:0.1.0` | Bioconda Manta 1.6.0/Python 2.7 runtime plus `bgzip`/`tabix` for optional WES structural-variant calling. |
 
 Both images are built for `linux/amd64`.
 MitoScape runs in its own Java 8 container because its bundled Spark/Scala

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 ARG CLAM_TARGETPLATFORM=linux/amd64
-FROM --platform=$CLAM_TARGETPLATFORM mambaorg/micromamba:1.5.10-jammy
+FROM --platform=$CLAM_TARGETPLATFORM quay.io/biocontainers/manta:1.6.0--py27h9948957_6
 
 ARG CLAM_TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -12,10 +12,18 @@ LABEL org.opencontainers.image.title="CLAM Manta runtime" \
 
 RUN echo "Building CLAM Manta tools for ${CLAM_TARGETPLATFORM} from ${BUILDPLATFORM:-unknown}"
 
-COPY --chown=$MAMBA_USER:$MAMBA_USER environment.yml /tmp/environment.yml
-RUN micromamba install -y -n base -f /tmp/environment.yml && \
-    ln -sf /opt/conda/bin/python2.7 /opt/conda/bin/python2 && \
-    micromamba clean --all --yes
+# Manta 1.6.0 requires Python 2.7. Use its Bioconda-built runtime instead of
+# resolving that legacy interpreter alongside modern HTSlib/OpenSSL packages.
+USER root
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends tabix && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN if ! command -v python2 >/dev/null 2>&1; then \
+        python27="$(command -v python2.7)" && \
+        test -n "$python27" && \
+        ln -sf "$python27" /usr/local/bin/python2; \
+    fi
 
 ENV PATH="/opt/conda/bin:/usr/local/bin:${PATH}" \
     LC_ALL=C.UTF-8 \
