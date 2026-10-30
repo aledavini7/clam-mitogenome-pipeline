@@ -351,7 +351,7 @@ workflow {
             if (run_nuclear_manta) {
                 nuclear_manta_input_ch = nuclear_bams_ch
                     .combine(nuclear_reference_ch)
-                    .map { sample_id, bam, bai, reference, reference_fai -> tuple(sample_id, 'germline', [bam], reference, reference_fai) }
+                    .map { sample_id, bam, bai, reference, reference_fai -> tuple(sample_id, 'germline', [bam], [bai], reference, reference_fai) }
                 nuclear_manta(nuclear_manta_input_ch)
             }
         } else if (nuclear_calling_mode == 'paired') {
@@ -408,7 +408,7 @@ workflow {
                 nuclear_manta_input_ch = nuclear_pair_bams_ch
                     .combine(nuclear_reference_ch)
                     .map { pair_id, tumor_id, tumor_bam, tumor_bai, normal_id, normal_bam, normal_bai, reference, reference_fai ->
-                        tuple(tumor_id, 'paired', [tumor_bam, normal_bam], reference, reference_fai)
+                        tuple(tumor_id, 'paired', [tumor_bam, normal_bam], [tumor_bai, normal_bai], reference, reference_fai)
                     }
                 nuclear_manta(nuclear_manta_input_ch)
             }
@@ -422,7 +422,7 @@ workflow {
             if (run_nuclear_manta) {
                 nuclear_manta_input_ch = nuclear_bams_ch
                     .combine(nuclear_reference_ch)
-                    .map { sample_id, bam, bai, reference, reference_fai -> tuple(sample_id, 'tumor_only', [bam], reference, reference_fai) }
+                    .map { sample_id, bam, bai, reference, reference_fai -> tuple(sample_id, 'tumor_only', [bam], [bai], reference, reference_fai) }
                 nuclear_manta(nuclear_manta_input_ch)
             }
         }

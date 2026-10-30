@@ -4,7 +4,7 @@ process nuclear_manta {
     container params.manta_container
 
     input:
-    tuple val(sample_id), val(calling_mode), path(bams), path(reference), path(reference_fai)
+    tuple val(sample_id), val(calling_mode), path(bams), path(bais), path(reference), path(reference_fai)
 
     output:
     tuple val(sample_id), path('manta_out')
