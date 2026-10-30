@@ -2,7 +2,7 @@
 
 process index {
 
-    publishDir "${params.outdir}/${sample_id}/bams", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/mtDNA/mito_bams", mode: 'copy'
 
     input:
     tuple val(sample_id), path(sorted_bams)

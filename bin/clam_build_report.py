@@ -542,15 +542,15 @@ def build_html(args, data):
     ]
 
     output_links = [
-        ["BAMs", "../bams/"],
-        ["Coverage", "../coverage/"],
-        ["Variants", "../variants/"],
-        ["Annotation TSVs", "../annotation/"],
-        ["MAFs", "../annotation/mafs/"],
-        ["MITOMAP TSVs", "../annotation/mitomap/" if mitomap["enabled"] else "not requested"],
-        ["NUMT-like exploration", "../numt_exploration/" if numt_exploration["enabled"] else "not requested"],
-        ["Haplogroups", "../haplogroups/"],
-        ["QC TSVs", "../qc/"],
+        ["Mitochondrial BAMs", "../mito_bams/"],
+        ["Mitochondrial coverage", "../mito_coverage/"],
+        ["Mitochondrial variants", "../mito_variants/"],
+        ["Mitochondrial annotation TSVs", "../mito_annotation/"],
+        ["MAFs", "../mito_annotation/mafs/"],
+        ["MITOMAP TSVs", "../mito_annotation/mitomap/" if mitomap["enabled"] else "not requested"],
+        ["NUMT-like exploration", "../mito_numt_exploration/" if numt_exploration["enabled"] else "not requested"],
+        ["Haplogroups", "../mito_haplogroups/"],
+        ["QC TSVs", "../mito_qc/"],
     ]
 
     numt_section = ""

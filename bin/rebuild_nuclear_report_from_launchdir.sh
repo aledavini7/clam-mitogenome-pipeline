@@ -9,9 +9,17 @@ CALLING_MODE="${2:-tumor_only}"
 COMMON_AF_THRESHOLD="${COMMON_AF_THRESHOLD:-0.01}"
 TOP_VARIANTS="${TOP_VARIANTS:-100}"
 SAMPLE_DIR="${LAUNCHDIR}/results/${SAMPLE_ID}/nuclear"
-ANNOTATION_DIR="${SAMPLE_DIR}/annotation"
-CNV_DIR="${SAMPLE_DIR}/cnv/cnvkit_out"
-REPORT_DIR="${SAMPLE_DIR}/report"
+if [[ -d "${SAMPLE_DIR}/nuclear_annotation" ]]; then
+    ANNOTATION_DIR="${SAMPLE_DIR}/nuclear_annotation"
+    CNV_ROOT="${SAMPLE_DIR}/nuclear_cnv"
+    REPORT_DIR="${SAMPLE_DIR}/nuclear_report"
+else
+    # Keep report-only rebuilding compatible with earlier result layouts.
+    ANNOTATION_DIR="${SAMPLE_DIR}/annotation"
+    CNV_ROOT="${SAMPLE_DIR}/cnv"
+    REPORT_DIR="${SAMPLE_DIR}/report"
+fi
+CNV_DIR="${CNV_ROOT}/cnvkit_out"
 REPORT_BUILDER="$(dirname "$(realpath "$0")")/clam_build_nuclear_report.py"
 VCF="${ANNOTATION_DIR}/${SAMPLE_ID}.annotated.vcf"
 MAF="${ANNOTATION_DIR}/${SAMPLE_ID}.maf"

@@ -1,6 +1,6 @@
 process merge_variant_calls {
 
-    publishDir "${params.outdir}/${sample_id}/annotation", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/mtDNA/mito_annotation", mode: 'copy'
 
     input:
     tuple val(sample_id), path(mutect2_vcf), path(mutserve_vcf), path(coverage_file)
@@ -34,7 +34,7 @@ process merge_variant_calls {
 
 process annotation_mafs {
 
-    publishDir "${params.outdir}/${sample_id}/annotation/mafs", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/mtDNA/mito_annotation/mafs", mode: 'copy'
 
     input:
     tuple val(sample_id),
@@ -89,7 +89,7 @@ process annotation_mafs {
 
 process mitomap_annotation {
 
-    publishDir "${params.outdir}/${sample_id}/annotation/mitomap", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/mtDNA/mito_annotation/mitomap", mode: 'copy'
 
     input:
     tuple val(sample_id),

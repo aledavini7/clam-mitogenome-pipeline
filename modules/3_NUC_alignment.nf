@@ -22,7 +22,7 @@ process bam2fq {
 
 process alignment_Nuc {
 
-	publishDir "${params.outdir}/${sample_id}/bams", mode: 'copy'
+	publishDir "${params.outdir}/${sample_id}/mtDNA/mito_bams", mode: 'copy'
 
 	input:
 	tuple val(sample_id), path(fastqs)

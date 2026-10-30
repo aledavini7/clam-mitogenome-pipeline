@@ -2,7 +2,7 @@
 
 process mutect2 {
 
-    publishDir "${params.outdir}/${sample_id}/variants", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/mtDNA/mito_variants", mode: 'copy'
 
     input:
     tuple val(sample_id), path(sorted_rg_bams), path(index_bai)
@@ -21,7 +21,7 @@ process mutect2 {
 
 process filter_mutect2 {
 
-    publishDir "${params.outdir}/${sample_id}/variants", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/mtDNA/mito_variants", mode: 'copy'
 
     input:
     tuple val(sample_id), path(vcfs), path(vcf_idx), path(vcf_stats)
@@ -60,7 +60,7 @@ process bgzip {
 
 process mutserve {
 
-    publishDir "${params.outdir}/${sample_id}/variants", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/mtDNA/mito_variants", mode: 'copy'
 
     input:
     tuple val(sample_id), path(sorted_rg_bams), path(index_bai)

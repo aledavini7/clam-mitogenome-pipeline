@@ -1,6 +1,6 @@
 process numt_like_exploration {
 
-    publishDir "${params.outdir}/${sample_id}/numt_exploration", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/mtDNA/mito_numt_exploration", mode: 'copy'
 
     input:
     tuple val(sample_id), path(before_bam), path(after_bam), path(nuclear_bam)

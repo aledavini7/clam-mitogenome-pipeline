@@ -1,6 +1,6 @@
 process nuclear_manta {
     tag "$sample_id ($calling_mode)"
-    publishDir "${params.outdir}/${sample_id}/nuclear/sv", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/nuclear/nuclear_sv", mode: 'copy'
     container params.manta_container
 
     input:

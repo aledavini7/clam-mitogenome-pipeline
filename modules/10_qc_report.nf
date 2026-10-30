@@ -1,6 +1,6 @@
 process bam_qc {
 
-    publishDir "${params.outdir}/${sample_id}/qc", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/mtDNA/mito_qc", mode: 'copy'
 
     input:
     tuple val(sample_id), val(bam_stages), path(bams)
@@ -82,7 +82,7 @@ process no_numt_exploration_report_table {
 
 process build_report {
 
-    publishDir "${params.outdir}/${sample_id}/report", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/mtDNA/mito_report", mode: 'copy'
 
     input:
     tuple val(sample_id),

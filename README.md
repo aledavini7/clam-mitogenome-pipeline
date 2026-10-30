@@ -156,7 +156,7 @@ confirmed somatic variants, and flat-reference CNV results are exploratory.
 Optional Manta structural-variant calling is enabled with
 `--nuclear_run_manta true` and runs in the separate `clam-manta` container. It
 publishes VCFs and indexes under
-`results/<sample_id>/nuclear/sv/manta_out/`. Manta is run in exome mode on
+`results/<sample_id>/nuclear/nuclear_sv/manta_out/`. Manta is run in exome mode on
 primary GRCh38 chromosomes; WES has limited breakpoint evidence, so treat these
 calls as candidates for review rather than a complete structural-variant
 survey. Tumor-only mode produces unscored candidate calls.
@@ -302,43 +302,69 @@ For each sample, CLAM writes results under:
 
 ```text
 results/<sample_id>/
+├── mtDNA/
+│   ├── mito_bams/
+│   ├── mito_coverage/
+│   ├── mito_variants/
+│   ├── mito_annotation/
+│   │   ├── mafs/
+│   │   └── mitomap/
+│   ├── mito_haplogroups/
+│   ├── mito_qc/
+│   ├── mito_report/
+│   └── mito_numt_exploration/   (optional)
+└── nuclear/
+    ├── nuclear_bams/
+    ├── nuclear_variants/
+    ├── nuclear_annotation/
+    ├── nuclear_cnv/
+    ├── nuclear_report/
+    └── nuclear_sv/                 (optional)
 ```
 
-Core output categories include:
+The `mtDNA/` and `nuclear/` roots keep the two analysis branches separate, and
+the branch-prefixed subfolder names make each output type explicit. Core mtDNA
+output categories include:
 
-- BAMs under `results/<sample_id>/bams/`: rCRS alignment BAMs,
+- BAMs under `results/<sample_id>/mtDNA/mito_bams/`: rCRS alignment BAMs,
   MD-tagged BAMs, MitoScape-corrected BAMs, final coordinate-sorted BAMs, and
   BAM index files
-- coverage files under `results/<sample_id>/coverage/`
+- coverage files under `results/<sample_id>/mtDNA/mito_coverage/`
 - raw and FilterMutectCalls-filtered Mutect2 VCFs under
-  `results/<sample_id>/variants/`
-- mutserve VCFs and summaries under `results/<sample_id>/variants/`
-- HaploGrep3 haplogroup reports under `results/<sample_id>/haplogroups/`
-- first-pass QC summaries under `results/<sample_id>/qc/`
-- a self-contained HTML report under `results/<sample_id>/report/`, combining
+  `results/<sample_id>/mtDNA/mito_variants/`
+- mutserve VCFs and summaries under `results/<sample_id>/mtDNA/mito_variants/`
+- HaploGrep3 haplogroup reports under `results/<sample_id>/mtDNA/mito_haplogroups/`
+- first-pass QC summaries under `results/<sample_id>/mtDNA/mito_qc/`
+- a self-contained HTML report under `results/<sample_id>/mtDNA/mito_report/`, combining
   coverage, BAM QC, variant caller summaries, confidence tiers, haplogroups, and
   optional MITOMAP matches
-- annotation TSVs under `results/<sample_id>/annotation/`: caller-specific
+- annotation TSVs under `results/<sample_id>/mtDNA/mito_annotation/`: caller-specific
   Mutect2 and mutserve tables, an all-calls consensus table, and a
   confidence-filtered consensus table retaining `HIGH` and `MEDIUM` calls with
   final coverage, heteroplasmy estimates, Wilson confidence intervals, and
   confidence tiers
 - lightweight maftools-compatible MAF files under
-  `results/<sample_id>/annotation/mafs/`, generated from the same annotation
+  `results/<sample_id>/mtDNA/mito_annotation/mafs/`, generated from the same annotation
   TSVs. These first-pass MAFs use conservative mitochondrial placeholders
   (`Hugo_Symbol=MTDNA`, `Variant_Classification=RNA`) until richer MITOMAP/VEP
   annotation is added.
 - optional MITOMAP-annotated TSVs under
-  `results/<sample_id>/annotation/mitomap/` when `--mitomap_variant_table` is
+  `results/<sample_id>/mtDNA/mito_annotation/mitomap/` when `--mitomap_variant_table` is
   provided. CLAM expects a local MITOMAP-derived TSV/CSV file and performs exact
   allele matching when possible, falling back to position-level matching.
 - optional NUMT-like exploration outputs under
-  `results/<sample_id>/numt_exploration/` when
+  `results/<sample_id>/mtDNA/mito_numt_exploration/` when
   `--run_numt_exploration true` is used in `wgs_numt_correction` mode. These
   include MitoScape-rejected read IDs, extracted rejected-read BAMs, nuclear
   alignment summaries, and window-level nuclear remapping summaries. These are
   exploratory outputs and should not be reported as confirmed NUMT insertions
   without independent breakpoint-level support.
+
+The nDNA branch uses corresponding explicit directories under
+`results/<sample_id>/nuclear/`: alignments and indexes in `nuclear_bams/`, VCFs
+in `nuclear_variants/`, annotated VCFs and MAFs in `nuclear_annotation/`,
+CNVkit outputs in `nuclear_cnv/`, the summary in `nuclear_report/`, and optional
+Manta outputs in `nuclear_sv/`.
 
 MITOMAP is maintained as a human mitochondrial genome database and reports
 published data on human mtDNA variation. Because MITOMAP resources and terms of

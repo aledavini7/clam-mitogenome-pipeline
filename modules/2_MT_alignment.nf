@@ -5,7 +5,7 @@
 
 process alignment_MT {
 
-	publishDir "${params.outdir}/${sample_id}/bams", mode: 'copy'
+	publishDir "${params.outdir}/${sample_id}/mtDNA/mito_bams", mode: 'copy'
 
         input:
 	tuple val(sample_id), path(reads)
@@ -36,7 +36,7 @@ process alignment_MT {
 
 process get_the_MD {
 
-	publishDir "${params.outdir}/${sample_id}/bams", mode: 'copy'
+	publishDir "${params.outdir}/${sample_id}/mtDNA/mito_bams", mode: 'copy'
 
 	input:
 	tuple val(sample_id), path(bams)

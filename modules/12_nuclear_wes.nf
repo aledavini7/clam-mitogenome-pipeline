@@ -18,7 +18,7 @@ process nuclear_reference_index {
 
 process nuclear_alignment {
     tag "$sample_id"
-    publishDir "${params.outdir}/${sample_id}/nuclear/bams", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/nuclear/nuclear_bams", mode: 'copy'
     container params.nuclear_tool_container
 
     input:
@@ -85,7 +85,7 @@ process nuclear_alignment {
 
 process nuclear_prepare_bam {
     tag "$sample_id"
-    publishDir "${params.outdir}/${sample_id}/nuclear/bams", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/nuclear/nuclear_bams", mode: 'copy'
     container params.nuclear_tool_container
 
     input:
@@ -108,7 +108,7 @@ process nuclear_prepare_bam {
 
 process nuclear_tumor_only_call {
     tag "$sample_id"
-    publishDir "${params.outdir}/${sample_id}/nuclear/variants", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/nuclear/nuclear_variants", mode: 'copy'
     container params.mutect2_container
 
     input:
@@ -140,7 +140,7 @@ process nuclear_tumor_only_call {
 
 process nuclear_paired_call {
     tag "$pair_id"
-    publishDir "${params.outdir}/${tumor_id}/nuclear/variants", mode: 'copy'
+    publishDir "${params.outdir}/${tumor_id}/nuclear/nuclear_variants", mode: 'copy'
     container params.mutect2_container
 
     input:
@@ -172,7 +172,7 @@ process nuclear_paired_call {
 
 process nuclear_germline_call {
     tag "$sample_id"
-    publishDir "${params.outdir}/${sample_id}/nuclear/variants", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/nuclear/nuclear_variants", mode: 'copy'
     container params.mutect2_container
 
     input:
@@ -202,7 +202,7 @@ process nuclear_germline_call {
 
 process nuclear_annotate {
     tag "$sample_id"
-    publishDir "${params.outdir}/${sample_id}/nuclear/annotation", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/nuclear/nuclear_annotation", mode: 'copy'
     container params.nuclear_tool_container
 
     input:
@@ -234,7 +234,7 @@ process nuclear_annotate {
 
 process nuclear_cnvkit_flat {
     tag "$sample_id"
-    publishDir "${params.outdir}/${sample_id}/nuclear/cnv", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/nuclear/nuclear_cnv", mode: 'copy'
     container params.nuclear_tool_container
 
     input:
@@ -266,7 +266,7 @@ process nuclear_cnvkit_flat {
 
 process nuclear_cnvkit_paired {
     tag "$pair_id"
-    publishDir "${params.outdir}/${tumor_id}/nuclear/cnv", mode: 'copy'
+    publishDir "${params.outdir}/${tumor_id}/nuclear/nuclear_cnv", mode: 'copy'
     container params.nuclear_tool_container
 
     input:
@@ -298,7 +298,7 @@ process nuclear_cnvkit_paired {
 
 process nuclear_report {
     tag "$sample_id"
-    publishDir "${params.outdir}/${sample_id}/nuclear/report", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/nuclear/nuclear_report", mode: 'copy'
     container params.annotation_container
 
     input:
